@@ -3,7 +3,12 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/local/include",
+                "/usr/include/x86_64-linux-gnu",
+                "/usr/include/linux",
+                "/usr/lib/gcc/x86_64-linux-gnu/7/include"
             ],
             "defines": [
                 "_DEBUG",
