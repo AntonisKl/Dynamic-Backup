@@ -1,11 +1,12 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <stdio.h>
-#include <string.h>
 #include <dirent.h>
-#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 typedef enum Type {
@@ -13,26 +14,36 @@ typedef enum Type {
     File
 } Type;
 
+typedef struct NameNode {
+    char* name;
+    struct NameNode *nextNode, *prevNode;
+} NameNode;
+
+typedef struct NamesList {
+    NameNode* firstNameNode;
+    unsigned int size;
+} NamesList;
+
 typedef struct INode {
-    time_t lastModTime; // in seconds
+    time_t lastModTime;  // in seconds
     off_t size;
-    char** names;
-    unsigned int namesNum;
-    struct INode* destINode; // will be null for a destination i-node
+    NamesList* namesList;
+    // char** names;
+    // unsigned int namesNum;
+    struct INode* destINode;  // will be null for a destination i-node
     Type type;
 } INode;
 
-typedef struct TreeNode {
-    char* name;
-    INode* iNodeP;
-    struct TreeNode* nextNode, *prevNode, *firstChildNode; // covers all different cases by setting null the variables that we don't need
-    Type type;
-    int contentsNum; // will be -1 for files
-} TreeNode;
+NamesList* initNamesList();
 
-typedef struct DirTree {
-    unsigned int size;
-    TreeNode* rootNode;
-} DirTree;
+NameNode* initNameNode(char* name);
+
+void freeNameNode(NameNode* nameNode);
+
+NameNode* findNameNodeInNamesList(NamesList* namesList, char* name);
+
+NameNode* addNameNodeToNamesList(NamesList* namesList, char* name);
+
+int deleteNameNodeFromNamesList(NamesList* namesList, char* name);
 
 #endif
