@@ -30,13 +30,15 @@ typedef struct INode {
     NamesList* namesList;
     // char** names;
     // unsigned int namesNum;
-    struct INode* destINode;  // will be null for a destination i-node
+    struct INode* destINodeP;  // will be null for a destination i-node
     Type type;
 } INode;
 
 NamesList* initNamesList();
 
 NameNode* initNameNode(char* name);
+
+INode* initINode(time_t lastModTime, off_t size, char* firstName/*, INode* destINodeP*/);
 
 void freeNameNode(NameNode* nameNode);
 

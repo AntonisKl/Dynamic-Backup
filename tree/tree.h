@@ -16,11 +16,11 @@ typedef struct DirTree {
 
 DirTree* initDirTree();
 
-TreeNode* initTreeNode(char* name, INode* iNodeP, Type type);
+TreeNode* initTreeNode(char* name, INode* iNodeP, Type type, INode* existingINode);
 
 void freeTreeNode(TreeNode* treeNode);
 
-TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode* iNodeP, Type type);
+TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode* iNodeP, Type type, TreeNode* sourceTreeNode);
 
 int deleteTreeNodeFromDir(TreeNode* parentDir, char* name);
 

@@ -16,6 +16,17 @@ NameNode* initNameNode(char* name) {
     return nameNode;
 }
 
+INode* initINode(time_t lastModTime, off_t size, char* firstName/*, INode* destINodeP*/) {
+    INode* iNode = (INode*)malloc(sizeof(INode));
+    iNode->lastModTime = lastModTime;
+    iNode->size = size;
+    iNode->namesList = initNamesList();
+    iNode->namesList->firstNameNode = initNameNode(firstName);
+    iNode->namesList->size++;
+
+    return iNode;
+}
+
 void freeNameNode(NameNode* nameNode) {
     free(nameNode->name);
     free(nameNode);
@@ -109,7 +120,6 @@ int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
 
     return 0;
 }
-
 
 // TreeNode* findFileTreeNodeInDir(TreeNode* parentDir, char* name) {
 //     if (parentDir == NULL) {

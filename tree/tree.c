@@ -8,10 +8,12 @@ DirTree* initDirTree() {
     return dirTree;
 }
 
-TreeNode* initTreeNode(char* name, INode* iNodeP, Type type) {
+TreeNode* initTreeNode(char* name, INode* iNodeP, Type type, INode* existingINode) {
     TreeNode* treeNode = (TreeNode*)malloc(sizeof(TreeNode));
     treeNode->name = (char*)malloc(sizeof(name));
-    treeNode->iNodeP = iNodeP;
+    treeNode->iNodeP = existingINode == NULL ? /*initINode(iNodeP->lastModTime, iNodeP->size, name)*/ iNodeP : existingINode;
+
+    treeNode->iNodeP->destINodeP = NULL;  // this will be changed after this function's call
     treeNode->type = type;
     treeNode->prevNode = NULL;
     treeNode->nextNode = NULL;
@@ -22,7 +24,9 @@ TreeNode* initTreeNode(char* name, INode* iNodeP, Type type) {
         treeNode->contentsNum = -1;
 
     treeNode->visited = 0;
-    addNameNodeToNamesList(treeNode->iNodeP->namesList, name);
+    if (existingINode == NULL) {
+        addNameNodeToNamesList(treeNode->iNodeP->namesList, name);
+    }
     // treeNode->iNodeP->names                  // add current name to names LIST not array
     return treeNode;
 }
@@ -67,9 +71,34 @@ void freeTreeNode(TreeNode* treeNode) {
 //     }
 // }
 
-TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode* iNodeP, Type type) {
-    if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
-        printf("A directory/file with name %s already existed in directory with name %s so it has been deleted\n", name, parentDir->name);
+TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode* iNodeP, Type type, TreeNode* sourceTreeNode /*this is null for source directory*/) {
+    // if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
+    //     printf("A directory/file with name %s already existed in directory with name %s so it has been deleted\n", name, parentDir->name);
+    // }
+
+    TreeNode* existingTreeNode = findTreeNodeInDir(parentDir, name, -1);
+
+    INode* existingINode = NULL;
+
+    if (sourceTreeNode != NULL && existingTreeNode != NULL) {  // we are trying to add a tree node to a *destination* directory
+        if (existingTreeNode->type != type) {
+            /*optimize this*/ if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
+                printf("A %s with name %s already existed in directory as a %s with name %s so it has been deleted\n",
+                       type == File ? "file" : "directory", name, type == Directory ? "file" : "directory", parentDir->name);
+            }
+        } else {
+            if (sourceTreeNode->iNodeP->lastModTime != existingTreeNode->iNodeP->lastModTime || sourceTreeNode->iNodeP->size != existingTreeNode->iNodeP->size) {
+                if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
+                    printf("A %s with name %s already existed in directory as a %s with name %s so it has been deleted\n",
+                           type == File ? "file" : "directory", name, type == Directory ? "file" : "directory", parentDir->name);
+                }
+
+                // if (sourceTreeNode->iNodeP->destINodeP != NULL) { // normally we are sure that this is != NULL at this point because we found an existing treeNode with same type and name
+                existingINode = sourceTreeNode->iNodeP->destINodeP;
+                addNameNodeToNamesList(sourceTreeNode->iNodeP->destINodeP->namesList, name);
+                // }
+            }
+        }
     }
 
     // if (findTreeNodeInDir(parentDir, name, -1) != NULL)
@@ -80,7 +109,7 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
 
     TreeNode* curTreeNode = parentDir->firstChildNode;
     if (curTreeNode == NULL) {
-        parentDir->firstChildNode = initTreeNode(name, iNodeP, type);
+        parentDir->firstChildNode = initTreeNode(name, iNodeP, type, existingINode);
         tree->size++;
         parentDir->contentsNum++;
 
@@ -89,7 +118,7 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
     }
 
     if (strcmp(name, curTreeNode->name) <= 0) {
-        TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type);
+        TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type, existingINode);
 
         treeNodeToAdd->nextNode = curTreeNode;
 
@@ -98,6 +127,10 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
         tree->size++;
         parentDir->contentsNum++;
 
+        if (sourceTreeNode != NULL) {
+            sourceTreeNode->iNodeP->destINodeP = treeNodeToAdd->iNodeP;
+        }
+
         printf("Directory/File with name %s added successfully to directory with name %s\n", name, parentDir->name);
         return treeNodeToAdd;
     }
@@ -105,7 +138,7 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
     while (curTreeNode != NULL) {
         if (curTreeNode->nextNode != NULL) {
             if (strcmp(name, curTreeNode->nextNode->name) <= 0) {
-                TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type);
+                TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type, existingINode);
                 treeNodeToAdd->prevNode = curTreeNode;
                 treeNodeToAdd->nextNode = curTreeNode->nextNode;
                 curTreeNode->nextNode->prevNode = treeNodeToAdd;
@@ -114,16 +147,24 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
                 tree->size++;
                 parentDir->contentsNum++;
 
+                if (sourceTreeNode != NULL) {
+                    sourceTreeNode->iNodeP->destINodeP = treeNodeToAdd->iNodeP;
+                }
+
                 printf("Directory/File with name %s added successfully to directory with name %s\n", name, parentDir->name);
                 return treeNodeToAdd;
             }
         } else {
-            TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type);
+            TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type, existingINode);
             treeNodeToAdd->prevNode = curTreeNode;
             curTreeNode->nextNode = treeNodeToAdd;
 
             tree->size++;
             parentDir->contentsNum++;
+
+            if (sourceTreeNode != NULL) {
+                sourceTreeNode->iNodeP->destINodeP = treeNodeToAdd->iNodeP;
+            }
 
             printf("Directory/File with name %s added successfully to directory with name %s\n", name, parentDir->name);
             return curTreeNode;
