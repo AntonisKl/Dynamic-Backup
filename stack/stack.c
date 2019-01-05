@@ -70,13 +70,13 @@ void pushToStack(Stack* stack, TreeNode* treeNode, TreeNode* parentDir) {
 
     stack->stackNodes[stack->size] = (StackNode*)malloc(sizeof(StackNode));
 
-    TreeNode* treeNodeToBePushed = initTreeNode(treeNode->name, treeNode->iNodeP, treeNode->type);
+    TreeNode* treeNodeToBePushed = initTreeNode(treeNode->name, treeNode->pathName, treeNode->iNodeP, treeNode->type, treeNode->iNodeP->namesList);
 
     copyTreeNode(treeNodeToBePushed, treeNode);
 
     TreeNode* parentDirToBePushed = NULL;
     if (parentDir != NULL) {
-        parentDirToBePushed = initTreeNode(parentDir->name, parentDir->iNodeP, parentDir->type);
+        parentDirToBePushed = initTreeNode(parentDir->name, treeNode->pathName, parentDir->iNodeP, parentDir->type, parentDir->iNodeP->namesList);
         copyTreeNode(parentDirToBePushed, parentDir);
     }
 
@@ -95,11 +95,11 @@ void popFromStack(Stack* stack, StackNode** poppedStackNode) {
 
     StackNode* stackNodeToBePopped = stack->stackNodes[stack->size - 1];
 
-    (*poppedStackNode)->curTreeNode = initTreeNode(stackNodeToBePopped->curTreeNode->name, stackNodeToBePopped->curTreeNode->iNodeP, stackNodeToBePopped->curTreeNode->type);
+    (*poppedStackNode)->curTreeNode = initTreeNode(stackNodeToBePopped->curTreeNode->name, stackNodeToBePopped->curTreeNode->pathName, stackNodeToBePopped->curTreeNode->iNodeP, stackNodeToBePopped->curTreeNode->type, stackNodeToBePopped->curTreeNode->iNodeP->namesList);
     copyTreeNode((*poppedStackNode)->curTreeNode, stackNodeToBePopped->curTreeNode);
 
     if (stackNodeToBePopped->parentDir != NULL) {
-        (*poppedStackNode)->parentDir = initTreeNode(stackNodeToBePopped->parentDir->name, stackNodeToBePopped->curTreeNode->iNodeP, stackNodeToBePopped->curTreeNode->type);
+        (*poppedStackNode)->parentDir = initTreeNode(stackNodeToBePopped->parentDir->name, stackNodeToBePopped->parentDir->pathName, stackNodeToBePopped->parentDir->iNodeP, stackNodeToBePopped->parentDir->type, stackNodeToBePopped->parentDir->iNodeP->namesList);
         copyTreeNode((*poppedStackNode)->parentDir, stackNodeToBePopped->parentDir);
     } else
         (*poppedStackNode)->parentDir = NULL;

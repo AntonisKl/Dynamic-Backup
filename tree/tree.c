@@ -8,10 +8,18 @@ DirTree* initDirTree() {
     return dirTree;
 }
 
-TreeNode* initTreeNode(char* name, INode* iNodeP, Type type, INode* existingINode) {
+TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type, NamesList* namesList) {  // namesList != NULL only when calling this function for stack
     TreeNode* treeNode = (TreeNode*)malloc(sizeof(TreeNode));
     treeNode->name = (char*)malloc(sizeof(name));
-    treeNode->iNodeP = existingINode == NULL ? /*initINode(iNodeP->lastModTime, iNodeP->size, name)*/ iNodeP : existingINode;
+    strcpy(treeNode->name, name);
+    treeNode->pathName = (char*)malloc(sizeof(pathName));
+    strcpy(treeNode->pathName, pathName);
+
+    if (namesList == NULL) {
+        treeNode->iNodeP = /*existingINode == NULL ? initINode(iNodeP->lastModTime, iNodeP->size, name)*/ iNodeP /*: existingINode*/;
+    } else {
+        treeNode->iNodeP = initINode(iNodeP->lastModTime, iNodeP->size, namesList);
+    }
 
     treeNode->iNodeP->destINodeP = NULL;  // this will be changed after this function's call
     treeNode->type = type;
@@ -24,9 +32,9 @@ TreeNode* initTreeNode(char* name, INode* iNodeP, Type type, INode* existingINod
         treeNode->contentsNum = -1;
 
     treeNode->visited = 0;
-    if (existingINode == NULL) {
-        addNameNodeToNamesList(treeNode->iNodeP->namesList, name);
-    }
+    // if (existingINode == NULL) {
+    addNameNodeToNamesList(treeNode->iNodeP->namesList, name);
+    // }
     // treeNode->iNodeP->names                  // add current name to names LIST not array
     return treeNode;
 }
@@ -39,9 +47,12 @@ void freeTreeNode(TreeNode* treeNode) {
 
     //                              // maybe make the i-nodes' array a list too to be able to delete the corresponding i-node if namesNum == 0
     free(treeNode->name);
+    treeNode->name = NULL;
+    free(treeNode->pathName);
+    treeNode->pathName = NULL;
     //                                                          MAYBE HERE SEE IF THERE ARE INODES THAT POINT TO THIS FILE/DIRECTORY AND DELETE THEM TOO
     free(treeNode);
-
+    treeNode = NULL;
     return;
 }
 
@@ -71,7 +82,7 @@ void freeTreeNode(TreeNode* treeNode) {
 //     }
 // }
 
-TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode* iNodeP, Type type, TreeNode* sourceTreeNode /*this is null for source directory*/) {
+TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char* pathName, INode* iNodeP, time_t lastModTime, off_t size, Type type, TreeNode* sourceTreeNode /*this is null for source directory*/) {
     // if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
     //     printf("A directory/file with name %s already existed in directory with name %s so it has been deleted\n", name, parentDir->name);
     // }
@@ -82,23 +93,32 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
 
     if (sourceTreeNode != NULL && existingTreeNode != NULL) {  // we are trying to add a tree node to a *destination* directory
         if (existingTreeNode->type != type) {
-            /*optimize this*/ if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
+            /*optimize this*/ if (deleteTreeNodeFromDir(parentDir, name, pathName) == 0) {  // if tree node with the same name exists in current directory then delete it first
                 printf("A %s with name %s already existed in directory as a %s with name %s so it has been deleted\n",
                        type == File ? "file" : "directory", name, type == Directory ? "file" : "directory", parentDir->name);
             }
         } else {
             if (sourceTreeNode->iNodeP->lastModTime != existingTreeNode->iNodeP->lastModTime || sourceTreeNode->iNodeP->size != existingTreeNode->iNodeP->size) {
-                if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
+                if (deleteTreeNodeFromDir(parentDir, name, pathName) == 0) {  // if tree node with the same name exists in current directory then delete it first
                     printf("A %s with name %s already existed in directory as a %s with name %s so it has been deleted\n",
                            type == File ? "file" : "directory", name, type == Directory ? "file" : "directory", parentDir->name);
                 }
 
                 // if (sourceTreeNode->iNodeP->destINodeP != NULL) { // normally we are sure that this is != NULL at this point because we found an existing treeNode with same type and name
                 existingINode = sourceTreeNode->iNodeP->destINodeP;
-                addNameNodeToNamesList(sourceTreeNode->iNodeP->destINodeP->namesList, name);
+                // addNameNodeToNamesList(sourceTreeNode->iNodeP->destINodeP->namesList, name);
                 // }
+            } else {
+                printf("Directory/File with name %s already in directory with name %s\n", name, parentDir->name);
+                return existingTreeNode;
             }
         }
+    }
+
+    if (existingINode == NULL) {
+        iNodeP = initINode(lastModTime, size, NULL);  /// WILL THIS WORK?? I WANT THE VALUE OF THE INODEP PARAMETER TO CHANGE
+    } else {
+        iNodeP = NULL;
     }
 
     // if (findTreeNodeInDir(parentDir, name, -1) != NULL)
@@ -109,7 +129,7 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
 
     TreeNode* curTreeNode = parentDir->firstChildNode;
     if (curTreeNode == NULL) {
-        parentDir->firstChildNode = initTreeNode(name, iNodeP, type, existingINode);
+        parentDir->firstChildNode = initTreeNode(name, pathName, existingINode == NULL ? iNodeP : existingINode, type, NULL);
         tree->size++;
         parentDir->contentsNum++;
 
@@ -118,7 +138,7 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
     }
 
     if (strcmp(name, curTreeNode->name) <= 0) {
-        TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type, existingINode);
+        TreeNode* treeNodeToAdd = initTreeNode(name, pathName, existingINode == NULL ? iNodeP : existingINode, type, NULL);
 
         treeNodeToAdd->nextNode = curTreeNode;
 
@@ -138,7 +158,7 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
     while (curTreeNode != NULL) {
         if (curTreeNode->nextNode != NULL) {
             if (strcmp(name, curTreeNode->nextNode->name) <= 0) {
-                TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type, existingINode);
+                TreeNode* treeNodeToAdd = initTreeNode(name, pathName, existingINode == NULL ? iNodeP : existingINode, type, NULL);
                 treeNodeToAdd->prevNode = curTreeNode;
                 treeNodeToAdd->nextNode = curTreeNode->nextNode;
                 curTreeNode->nextNode->prevNode = treeNodeToAdd;
@@ -155,7 +175,7 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
                 return treeNodeToAdd;
             }
         } else {
-            TreeNode* treeNodeToAdd = initTreeNode(name, iNodeP, type, existingINode);
+            TreeNode* treeNodeToAdd = initTreeNode(name, pathName, existingINode == NULL ? iNodeP : existingINode, type, NULL);
             treeNodeToAdd->prevNode = curTreeNode;
             curTreeNode->nextNode = treeNodeToAdd;
 
@@ -176,24 +196,61 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, INode
     return NULL;  // not normal
 }
 
-int deleteTreeNodeFromDir(TreeNode* parentDir, char* name) {
+int deleteTreeNodeFromDir(TreeNode* parentDir, char* name, char* pathName) {
     if (parentDir == NULL) {
         printf("Delete -> NULL parent directory given as parameter\n");
         return -1;
     }
 
+    if (parentDir->firstChildNode == NULL) {
+        printf("Delete -> Directory/File with name %s not found inside directory with name %s\n", name, parentDir->name);
+        return -1;  // not found
+    }
+
     TreeNode* curTreeNode = parentDir->firstChildNode;
+
+    if (strcmp(name, curTreeNode->name) < 0) {
+        printf("Delete -> Directory/File with name %s not found inside directory with name %s\n", name, parentDir->name);
+        return -1;  // not found
+    }
 
     if (strcmp(name, curTreeNode->name) == 0) {
         parentDir->firstChildNode = curTreeNode->nextNode;
+        freeTreeNode(parentDir->firstChildNode->prevNode);
+        parentDir->firstChildNode->prevNode = NULL;
+
+        if (fork() == 0) {
+            char* args[] = {"rm", "-rf", pathName, NULL};
+            if (execvp(args[0], args) == -1) {
+                perror("execvp failed");
+                exit(1);
+            }
+        }
+        printf("Delete -> Directory/File with name %s deleted successfully from directory with name %s\n", name, parentDir->name);
+        return 0;
     }
+
+    curTreeNode = curTreeNode->nextNode;
 
     while (curTreeNode != NULL) {
         if (strcmp(name, curTreeNode->name) < 0)
             break;
 
         if (strcmp(name, curTreeNode->name) == 0) {
-            freeTreeNode(curTreeNode);
+            curTreeNode->prevNode->nextNode = curTreeNode->nextNode; // no need to check for NULL cause we are past the first tree node of this directory
+
+            if (curTreeNode->nextNode != NULL) {
+                curTreeNode->nextNode->prevNode = curTreeNode->prevNode;
+            }
+
+            freeTreeNode(curTreeNode);  //////////////////////// do more stuff here
+            if (fork() == 0) {
+                char* args[] = {"rm", "-rf", pathName, NULL};
+                if (execvp(args[0], args) == -1) {
+                    perror("execvp failed");
+                    exit(1);
+                }
+            }
             printf("Delete -> Directory/File with name %s deleted successfully from directory with name %s\n", name, parentDir->name);
             return 0;
         }
@@ -201,7 +258,7 @@ int deleteTreeNodeFromDir(TreeNode* parentDir, char* name) {
         curTreeNode = curTreeNode->nextNode;
     }
 
-    printf("Delete -> Directory/File with name %s not found inside directory with name %s\n", name, curTreeNode->name);
+    printf("Delete -> Directory/File with name %s not found inside directory with name %s\n", name, parentDir->name);
     return -1;  // not found
 }
 

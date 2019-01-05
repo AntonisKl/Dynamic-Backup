@@ -16,20 +16,38 @@ NameNode* initNameNode(char* name) {
     return nameNode;
 }
 
-INode* initINode(time_t lastModTime, off_t size, char* firstName/*, INode* destINodeP*/) {
+INode* initINode(time_t lastModTime, off_t size /*, INode* destINodeP*/, NamesList* namesList) {
     INode* iNode = (INode*)malloc(sizeof(INode));
     iNode->lastModTime = lastModTime;
     iNode->size = size;
     iNode->namesList = initNamesList();
-    iNode->namesList->firstNameNode = initNameNode(firstName);
-    iNode->namesList->size++;
+    if (namesList != NULL) {
+        NameNode* curDestNameNode = iNode->namesList->firstNameNode;
+        NameNode* curSourceNameNode = namesList->firstNameNode;
+
+        if (curSourceNameNode != NULL) {
+            iNode->namesList->firstNameNode = initNameNode(curSourceNameNode->name);
+        }
+
+        while (curSourceNameNode != NULL) {
+            curDestNameNode->nextNode = initNameNode(curSourceNameNode->name);
+
+            curSourceNameNode = curSourceNameNode->nextNode;
+            curDestNameNode = curDestNameNode->nextNode;
+        }
+    }
+
+    // iNode->namesList->firstNameNode = initNameNode(firstName);
+    // iNode->namesList->size++;
 
     return iNode;
 }
 
 void freeNameNode(NameNode* nameNode) {
     free(nameNode->name);
+    nameNode->name = NULL;
     free(nameNode);
+    nameNode = NULL;
 
     return;
 }
@@ -107,6 +125,10 @@ int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
     if (nameNodeToDelete == NULL) {
         printf("Name node with name %s not found in names' list\n", name);
         return -1;
+    }
+
+    if (strcmp(nameNodeToDelete->name, namesList->firstNameNode->name) == 0) {
+        namesList->firstNameNode = nameNodeToDelete->nextNode;
     }
 
     if (nameNodeToDelete->prevNode != NULL)

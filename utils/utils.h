@@ -38,7 +38,7 @@ NamesList* initNamesList();
 
 NameNode* initNameNode(char* name);
 
-INode* initINode(time_t lastModTime, off_t size, char* firstName/*, INode* destINodeP*/);
+INode* initINode(time_t lastModTime, off_t size /*, INode* destINodeP*/, NamesList* namesList);
 
 void freeNameNode(NameNode* nameNode);
 
