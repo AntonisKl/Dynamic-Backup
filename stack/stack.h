@@ -1,3 +1,6 @@
+#ifndef STACK_H
+#define STACK_H
+
 #include "../tree/tree.h"
 #include "../utils/utils.h"
 
@@ -25,3 +28,5 @@ void pushToStack(Stack* stack, TreeNode* treeNode, TreeNode* parentDir);
 void popFromStack(Stack* stack, StackNode** poppedStackNode);
 
 StackNode* peekFromStack(Stack* stack);
+
+#endif

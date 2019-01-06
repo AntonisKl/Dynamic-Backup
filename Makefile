@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS  = -g -Wall
-
+RM = rm -rf
 
 default: mirr
 
@@ -21,4 +21,4 @@ stack.o:  stack/stack.c
 
 
 clean: 
-	$(RM) mirr *.o
+	$(RM) mirr *.o executables/*

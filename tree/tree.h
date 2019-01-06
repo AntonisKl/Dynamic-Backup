@@ -1,3 +1,6 @@
+#ifndef TREE_H
+#define TREE_H
+
 #include "../utils/utils.h"
 
 typedef struct TreeNode {
@@ -14,14 +17,20 @@ typedef struct DirTree {
     TreeNode* rootNode;
 } DirTree;
 
-DirTree* initDirTree();
+DirTree* initDirTree(char* rootName, char* pathName, INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size);
 
 TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type, NamesList* namesList);
 
-void freeTreeNode(TreeNode* treeNode);
+void freeTreeNode(TreeNode* treeNode, INodesList* iNodesList);
 
-TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char* pathName, INode* iNodeP, time_t lastModTime, off_t size, Type type, TreeNode* sourceTreeNode /*this is null for source directory*/);
+TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char* pathName, INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size, Type type, TreeNode* sourceTreeNode /*this is null for source directory*/);
 
-int deleteTreeNodeFromDir(TreeNode* parentDir, char* name, char* pathName);
+int deleteTreeNodeFromDir(TreeNode* parentDir, char* name, char* pathName, INodesList* iNodesList);
 
 TreeNode* findTreeNodeInDir(TreeNode* parentDir, char* name, Type type);  // type = -1 when we don't care about the type of the tree node
+
+void freeDirTreeLevel(TreeNode* treeNode, INodesList* iNodesList);
+
+void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode** parentDir, INodesList* iNodesList);
+
+#endif

@@ -16,12 +16,24 @@ NameNode* initNameNode(char* name) {
     return nameNode;
 }
 
-INode* initINode(time_t lastModTime, off_t size /*, INode* destINodeP*/, NamesList* namesList) {
+INodesList* initINodesList() {
+    INodesList* iNodesList = (INodesList*)malloc(sizeof(INodesList));
+    iNodesList->size = 0;
+    iNodesList->firstINode = NULL;
+
+    return iNodesList;
+}
+
+INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*/, NamesList* namesList, char* firstName) {
     INode* iNode = (INode*)malloc(sizeof(INode));
+    iNode->id = id;
     iNode->lastModTime = lastModTime;
     iNode->size = size;
     iNode->namesList = initNamesList();
-    if (namesList != NULL) {
+
+    if (firstName != NULL) {
+        addNameNodeToNamesList(iNode->namesList, firstName);
+    } else if (namesList != NULL) {
         NameNode* curDestNameNode = iNode->namesList->firstNameNode;
         NameNode* curSourceNameNode = namesList->firstNameNode;
 
@@ -52,6 +64,38 @@ void freeNameNode(NameNode* nameNode) {
     return;
 }
 
+void freeNamesList(NamesList* namesList) {
+    NameNode* curNameNode = namesList->firstNameNode;
+
+    while (curNameNode != NULL) {
+        free(curNameNode->name);
+        curNameNode->name = NULL;
+        curNameNode = curNameNode->nextNode;
+        free(curNameNode->prevNode);
+    }
+}
+
+void freeINode(INode* iNode) {
+    freeNamesList(iNode->namesList);
+    iNode->namesList = NULL;
+    freeINode(iNode);
+    iNode = NULL;
+}
+
+INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
+    INode* curINode = iNodesList->firstINode;
+    while (curINode != NULL) {
+        if (curINode->id == id) {
+            return curINode;
+        } else if (id < curINode->id)
+            return NULL;
+
+        curINode = curINode->nextNode;
+    }
+
+    return NULL;
+}
+
 NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
     NameNode* curNameNode = namesList->firstNameNode;
     while (curNameNode != NULL) {
@@ -64,6 +108,59 @@ NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
     }
 
     return NULL;
+}
+
+INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size, NamesList* namesList, char* firstName) {
+    if (iNodesList->size == 0) {
+        iNodesList->firstINode = initINode(id, lastModTime, size, namesList, firstName);
+
+        iNodesList->size++;
+        printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
+        return iNodesList->firstINode;
+    } else {
+        INode* curINode = iNodesList->firstINode;
+
+        if (id < curINode->id) {
+            // insert at start
+            INode* iNodeToInsert = initINode(id, lastModTime, size, namesList, firstName);
+            iNodeToInsert->nextNode = curINode;
+
+            curINode->prevNode = iNodeToInsert;
+            iNodesList->firstINode = iNodeToInsert;
+            iNodesList->size++;
+            printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
+            return iNodesList->firstINode;
+        } else {
+            while (curINode != NULL) {
+                if (curINode->nextNode != NULL) {
+                    if (id < curINode->id) {
+                        INode* iNodeToInsert = initINode(id, lastModTime, size, namesList, firstName);
+                        iNodeToInsert->prevNode = curINode;
+                        iNodeToInsert->nextNode = curINode->nextNode;
+
+                        curINode->nextNode->prevNode = iNodeToInsert;
+                        curINode->nextNode = iNodeToInsert;
+                        iNodesList->size++;
+                        printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
+
+                        return curINode->nextNode;
+                    }
+                } else {
+                    curINode->nextNode = initINode(id, lastModTime, size, namesList, firstName);
+                    curINode->nextNode->prevNode = curINode;
+
+                    // iNodesList->lastINode = iNodesList->lastINode->nextNode;
+                    iNodesList->size++;
+                    printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
+                    return curINode->nextNode;
+                }
+
+                curINode = curINode->nextNode;
+            }
+        }
+    }
+
+    return NULL;  // not normal behavior
 }
 
 NameNode* addNameNodeToNamesList(NamesList* namesList, char* name) {
@@ -119,6 +216,30 @@ NameNode* addNameNodeToNamesList(NamesList* namesList, char* name) {
     return NULL;  // not normal behavior
 }
 
+int deleteINodeFromINodesList(INodesList* iNodesList, ino_t id) {
+    INode* iNodeToDelete = findINodeInINodesList(iNodesList, id);
+
+    if (iNodeToDelete == NULL) {
+        printf("I-node with id %ju not found in names' list\n", (uintmax_t)id);
+        return -1;
+    }
+
+    if (iNodeToDelete->id == iNodesList->firstINode->id) {
+        iNodesList->firstINode = iNodeToDelete->nextNode;
+    }
+
+    if (iNodeToDelete->prevNode != NULL)
+        iNodeToDelete->prevNode->nextNode = iNodeToDelete->nextNode;
+
+    if (iNodeToDelete->nextNode != NULL)
+        iNodeToDelete->nextNode->prevNode = iNodeToDelete->prevNode;
+
+    freeINode(iNodeToDelete);
+    iNodesList->size--;
+
+    return 0;
+}
+
 int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
     NameNode* nameNodeToDelete = findNameNodeInNamesList(namesList, name);
 
@@ -141,6 +262,36 @@ int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
     namesList->size--;
 
     return 0;
+}
+
+void deleteFileOrDirectory(char* path) {
+    if (fork() == 0) {
+        char* args[] = {"rm", "-rf", path, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    }
+}
+
+void copyFileOrDirectory(char* sourcePath, char* destPath) {
+    if (fork() == 0) {
+        char* args[] = {"cp", sourcePath, destPath, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    }
+}
+
+void handleFlags(int argc, char** argv, char** sourceDirName, char** destDirName) {
+    if (argc != 3) {
+        printf("Invalid flags. Exiting...\n");
+        exit(1);
+    }
+
+    (*sourceDirName) = argv[1];
+    (*destDirName) = argv[2];
 }
 
 // TreeNode* findFileTreeNodeInDir(TreeNode* parentDir, char* name) {
