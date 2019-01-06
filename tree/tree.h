@@ -29,8 +29,8 @@ int deleteTreeNodeFromDir(TreeNode* parentDir, char* name, char* pathName, INode
 
 TreeNode* findTreeNodeInDir(TreeNode* parentDir, char* name, Type type);  // type = -1 when we don't care about the type of the tree node
 
-void freeDirTreeLevel(TreeNode* treeNode, INodesList* iNodesList);
+void freeDirTreeNodes(TreeNode* treeNode, INodesList* iNodesList);
 
-void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode** parentDir, INodesList* iNodesList);
+void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode* parentDir, INodesList* iNodesList);
 
 #endif

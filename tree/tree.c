@@ -2,21 +2,27 @@
 
 DirTree* initDirTree(char* rootName, char* pathName, INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size) {
     DirTree* dirTree = (DirTree*)malloc(sizeof(DirTree));  // must be freed
-    dirTree->size = 0;
-    NamesList* namesList = initNamesList();
-    addNameNodeToNamesList(namesList, rootName);
+    
+    // NamesList* namesList = initNamesList();
+    // printf("hello\n");
+    // addNameNodeToNamesList(namesList, rootName);
+    // printf("hello1\n");
+
     INode* createdINode = addINodeToINodesList(iNodesList, id, lastModTime, size, NULL, pathName);
     dirTree->rootNode = initTreeNode(rootName, pathName, createdINode, Directory, NULL);
+    dirTree->size = 1;
 
     return dirTree;
 }
 
 TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type, NamesList* namesList) {  // namesList != NULL only when calling this function for stack
     TreeNode* treeNode = (TreeNode*)malloc(sizeof(TreeNode));
-    treeNode->name = (char*)malloc(sizeof(name));
+    treeNode->name = (char*)malloc(PATH_MAX);
     strcpy(treeNode->name, name);
-    treeNode->pathName = (char*)malloc(sizeof(pathName));
+
+    treeNode->pathName = (char*)malloc(PATH_MAX);
     strcpy(treeNode->pathName, pathName);
+        printf("\nNAME1 = %s\n\n", treeNode->name);
 
     if (namesList == NULL) {
         treeNode->iNodeP = /*existingINode == NULL ? initINode(iNodeP->lastModTime, iNodeP->size, name)*/ iNodeP /*: existingINode*/;
@@ -33,17 +39,19 @@ TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type, Nam
         treeNode->contentsNum = 0;
     else
         treeNode->contentsNum = -1;
+    printf("\nNAME2 = %s\n\n", treeNode->name);
 
     treeNode->visited = 0;
     // if (existingINode == NULL) {
     // addNameNodeToNamesList(treeNode->iNodeP->namesList, name);
     // }
     // treeNode->iNodeP->names                  // add current name to names LIST not array
+    
     return treeNode;
 }
 
 void freeTreeNode(TreeNode* treeNode, INodesList* iNodesList) {
-    deleteNameNodeFromNamesList(treeNode->iNodeP->namesList, treeNode->name);
+    deleteNameNodeFromNamesList(treeNode->iNodeP->namesList, treeNode->pathName);
     if (treeNode->iNodeP->namesList->size == 0) {
         deleteINodeFromINodesList(iNodesList, treeNode->iNodeP->id);
     }
@@ -92,8 +100,9 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char*
     // if (deleteTreeNodeFromDir(parentDir, name) == 0) {  // if tree node with the same name exists in current directory then delete it first
     //     printf("A directory/file with name %s already existed in directory with name %s so it has been deleted\n", name, parentDir->name);
     // }
-
+    printf("add tree node 1\n");
     TreeNode* existingTreeNode = findTreeNodeInDir(parentDir, name, -1);
+    printf("add tree node 2\n");
 
     INode* existingINode = NULL;
 
@@ -124,10 +133,14 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char*
         existingINode = findINodeInINodesList(iNodesList, id);
     }
 
+        printf("add tree node 3\n");
+
+
     INode* createdINode = NULL;
     if (existingINode == NULL) {
         createdINode = addINodeToINodesList(iNodesList, id, lastModTime, size, NULL, pathName);  /// WILL THIS WORK?? I WANT THE VALUE OF THE INODEP PARAMETER TO CHANGE
     }
+    printf("add tree node 4\n");
 
     // if (findTreeNodeInDir(parentDir, name, -1) != NULL)
     // {
@@ -144,6 +157,8 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char*
         printf("Directory/File with name %s added successfully to directory with name %s\n", name, parentDir->name);
         return parentDir->firstChildNode;
     }
+        printf("add tree node 5\n");
+
 
     if (strcmp(name, curTreeNode->name) <= 0) {
         TreeNode* treeNodeToAdd = initTreeNode(name, pathName, existingINode == NULL ? createdINode : existingINode, type, NULL);
@@ -162,6 +177,8 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char*
         printf("Directory/File with name %s added successfully to directory with name %s\n", name, parentDir->name);
         return treeNodeToAdd;
     }
+        printf("add tree node 6\n");
+
 
     while (curTreeNode != NULL) {
         if (curTreeNode->nextNode != NULL) {
@@ -271,12 +288,16 @@ int deleteTreeNodeFromDir(TreeNode* parentDir, char* name, char* pathName, INode
 }
 
 TreeNode* findTreeNodeInDir(TreeNode* parentDir, char* name, Type type) {  // type = -1 when we don't care about the type of the tree node
+        printf("find tree node 1\n");
+
     if (parentDir == NULL) {
         printf("Find -> NULL parent directory given as parameter\n");
         return NULL;
     }
+    printf("find tree node 2\n");
 
     TreeNode* curTreeNode = parentDir->firstChildNode;
+    printf("find tree node 3\n");
 
     while (curTreeNode != NULL) {
         if (strcmp(name, curTreeNode->name) < 0)
@@ -288,57 +309,76 @@ TreeNode* findTreeNodeInDir(TreeNode* parentDir, char* name, Type type) {  // ty
         curTreeNode = curTreeNode->nextNode;
     }
 
-    printf("Find -> Directory/File with name %s not found inside directory with name %s\n", name, curTreeNode->name);
+    printf("Find -> Directory/File with name %s not found inside directory with name %s\n", name, parentDir->name);
     return NULL;  // not found
 }
 
-void freeDirTree(TreeNode* treeNode, INodesList* iNodesList) {
-    if (treeNode == NULL) {
+void freeDirTreeNodes(TreeNode* treeNode, INodesList* iNodesList) {
+    if (treeNode == NULL)
         return;
-    }
 
     if (treeNode->type == Directory) {
-        freeDirTree(treeNode->firstChildNode, iNodesList);
+        freeDirTreeNodes(treeNode->firstChildNode, iNodesList);
     }
 
-    freeDirTree(treeNode->nextNode, iNodesList);
+    freeDirTreeNodes(treeNode->nextNode, iNodesList);
 
+    printf("reached\n");
     freeTreeNode(treeNode, iNodesList);
 }
 
-void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode** parentDir, INodesList* iNodesList) {
+void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode* parentDir, INodesList* iNodesList) {
     DIR* dir;
     struct dirent* entry;
+    printf("dirname = %s\n", dirName);
 
+    printf("populating tree\n");
     if ((dir = opendir(dirName)) == NULL) {
         perror("Could not open directory");
         return;
     }
+    printf("populating tree1\n");
 
     while ((entry = readdir(dir)) != NULL) {
+        printf("in while loop entry: %s\n", entry->d_name);
         char path[PATH_MAX];
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
-        snprintf(path, sizeof(path), "%s/%s", dirName, entry->d_name);
 
+        printf("in while loop1\n");
+
+        snprintf(path, sizeof(path), "%s/%s", dirName, entry->d_name);
+        printf("path:%s\n", path);
         struct stat curStat;
         stat(path, &curStat);
+        printf("ino: %ju\n",  (uintmax_t)curStat.st_ino);
 
-        if (/*entry->d_type == DT_DIR*/ S_ISREG(curStat.st_mode)) {  // if it is a directory
-            if (parentDir != NULL) {
-                (*parentDir) = addTreeNodeToDir(dirTree, *parentDir, entry->d_name, path, iNodesList, curStat.st_ino, curStat.st_mtime, curStat.st_size, Directory, NULL);
-            } else {
-                (*parentDir) = dirTree->rootNode;
+        if (/*entry->d_type == DT_DIR*/ !S_ISREG(curStat.st_mode)) {  // if it is a directory
+                                                                     // if (parentDir != NULL) {
+                                                                     //     (*parentDir) = addTreeNodeToDir(dirTree, *parentDir, entry->d_name, path, iNodesList, curStat.st_ino, curStat.st_mtime, curStat.st_size, Directory, NULL);
+                                                                     // } else {
+            if (parentDir == NULL) {
+                parentDir = dirTree->rootNode;
             }
 
             printf("Handled directory: %*s[%s]\n", indent, "", entry->d_name);
             populateTree(path, indent + 2, dirTree, parentDir, iNodesList);
         } else {  // if it is a file
-            addTreeNodeToDir(dirTree, *parentDir, entry->d_name, path, iNodesList, curStat.st_ino, curStat.st_mtime, curStat.st_size, File, NULL);
+                                    printf("hello-1\n");
+
+            if (parentDir == NULL) {
+                                                    printf("hello-0\n");
+
+                parentDir = dirTree->rootNode;
+            }
+            printf("hello\n");
+
+            addTreeNodeToDir(dirTree, parentDir, entry->d_name, path, iNodesList, curStat.st_ino, curStat.st_mtime, curStat.st_size, File, NULL);
 
             printf("Handled file: %*s- %s\n", indent, "", entry->d_name);
         }
     }
+    printf("populating tree2\n");
 
     closedir(dir);
 }

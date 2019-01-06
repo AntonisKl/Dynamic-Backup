@@ -10,7 +10,7 @@ NamesList* initNamesList() {
 
 NameNode* initNameNode(char* name) {
     NameNode* nameNode = (NameNode*)malloc(sizeof(NameNode));
-    nameNode->name = malloc(sizeof(name));
+    nameNode->name = malloc(PATH_MAX);
     strcpy(nameNode->name, name);
 
     return nameNode;
@@ -60,7 +60,7 @@ void freeNameNode(NameNode* nameNode) {
     nameNode->name = NULL;
     free(nameNode);
     nameNode = NULL;
-
+    printf("name node freed!\n");
     return;
 }
 
@@ -72,14 +72,19 @@ void freeNamesList(NamesList* namesList) {
         curNameNode->name = NULL;
         curNameNode = curNameNode->nextNode;
         free(curNameNode->prevNode);
+        curNameNode->prevNode = NULL;
     }
+    free(namesList);
+    namesList = NULL;
+    printf("names list freed!\n");
 }
 
 void freeINode(INode* iNode) {
     freeNamesList(iNode->namesList);
     iNode->namesList = NULL;
-    freeINode(iNode);
+    free(iNode);
     iNode = NULL;
+    printf("i-node freed!\n");
 }
 
 INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
@@ -98,7 +103,9 @@ INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
 
 NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
     NameNode* curNameNode = namesList->firstNameNode;
+
     while (curNameNode != NULL) {
+        printf("in while in find name: %s\n", curNameNode->name);
         if (strcmp(curNameNode->name, name) == 0) {
             return curNameNode;
         } else if (strcmp(name, curNameNode->name) < 0)
@@ -195,7 +202,6 @@ NameNode* addNameNodeToNamesList(NamesList* namesList, char* name) {
                         curNameNode->nextNode = nameNodeToInsert;
                         namesList->size++;
                         printf("Inserted |%s|\n\n", name);
-
                         return curNameNode->nextNode;
                     }
                 } else {
