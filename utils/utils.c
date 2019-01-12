@@ -12,6 +12,8 @@ NameNode* initNameNode(char* name) {
     NameNode* nameNode = (NameNode*)malloc(sizeof(NameNode));
     nameNode->name = (char*)malloc(PATH_MAX);
     strcpy(nameNode->name, name);
+    nameNode->nextNode = NULL;
+    nameNode->prevNode = NULL;
 
     printf("\n\n\n\n                                    JUST INITIALIZED A NAME NODE WITH NAME: %s\n\n\n\n\n", nameNode->name);
     return nameNode;
@@ -33,6 +35,7 @@ INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*
     iNode->namesList = initNamesList();
     iNode->prevNode = NULL;
     iNode->nextNode = NULL;
+    iNode->destINodeP = NULL;
 
     if (firstName != NULL) {
         addNameNodeToNamesList(iNode->namesList, firstName);
@@ -76,25 +79,39 @@ void freeNameNode(NameNode** nameNode) {
 }
 
 void freeNamesList(NamesList** namesList) {
-    if (namesList == NULL)
+    // printf("inside\n");
+    if ((*namesList) == NULL)
         return;
+    // printf("inside1\n");
 
     NameNode* curNameNode = (*namesList)->firstNameNode;
 
     while (curNameNode != NULL) {
         free(curNameNode->name);
         curNameNode->name = NULL;
-        curNameNode = curNameNode->nextNode;
-        free(curNameNode->prevNode);
-        curNameNode->prevNode = NULL;
+        // printf("inside2\n");
+
+        if (curNameNode->nextNode != NULL) {
+            curNameNode = curNameNode->nextNode;
+            free(curNameNode->prevNode);
+            // printf("inside4\n");
+
+            curNameNode->prevNode = NULL;
+        } else {
+            free(curNameNode);
+            curNameNode = NULL;
+        }
     }
     free(*namesList);
     (*namesList) = NULL;
-    // printf("names list freed!\n");
+    printf("names list freed!\n");
 }
 
 void freeINode(INode** iNode) {
+    printf("in free1\n");
     freeNamesList(&(*iNode)->namesList);
+    printf("in free2\n");
+
     (*iNode)->namesList = NULL;
     free(*iNode);
     (*iNode) = NULL;
@@ -108,8 +125,9 @@ INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
         printf("id: %ju\n\n\n\n", curINode->id);
         if (curINode->id == id) {
             return curINode;
-        } else if (id < curINode->id)
+        } else if (id < curINode->id) {
             return NULL;
+        }
 
         curINode = curINode->nextNode;
     }
@@ -261,21 +279,26 @@ NameNode* addNameNodeToNamesList(NamesList* namesList, char* name) {
 
 int deleteINodeFromINodesList(INodesList* iNodesList, ino_t id) {
     INode* iNodeToDelete = findINodeInINodesList(iNodesList, id);
+    // printf("after in function\n");
 
     if (iNodeToDelete == NULL) {
         printf("I-node with id %ju not found in i-nodes' list\n", (uintmax_t)id);
         return -1;
     }
+    // printf("after in function1\n");
 
     if (iNodeToDelete->id == iNodesList->firstINode->id) {
         iNodesList->firstINode = iNodeToDelete->nextNode;
     }
+    // printf("after in function2\n");
 
     if (iNodeToDelete->prevNode != NULL)
         iNodeToDelete->prevNode->nextNode = iNodeToDelete->nextNode;
+    // printf("after in function3\n");
 
     if (iNodeToDelete->nextNode != NULL)
         iNodeToDelete->nextNode->prevNode = iNodeToDelete->prevNode;
+    // printf("after in function4\n");
 
     freeINode(&iNodeToDelete);
     iNodesList->size--;
@@ -284,7 +307,6 @@ int deleteINodeFromINodesList(INodesList* iNodesList, ino_t id) {
 }
 
 int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
-
     NameNode* nameNodeToDelete = findNameNodeInNamesList(namesList, name);
 
     if (nameNodeToDelete == NULL) {

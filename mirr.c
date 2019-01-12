@@ -36,18 +36,17 @@ int main(int argc, char **argv) {
     free(sourceINodesList);
     free(sourceDirTree);
 
-    // INode *iNode = destINodesList->firstINode;
-    // while (iNode != NULL) {
-    //     NameNode *nameNode = iNode->namesList->firstNameNode;
-    //     printf("changed node: %ju\n", iNode->id);
-    //     while (nameNode != NULL && strcmp(nameNode->name, "" ) != 0) {
-    //         printf("name node's name: %s\n", nameNode->name);
-    //         nameNode = nameNode->nextNode;
-    //     }
-    //     iNode = iNode->nextNode;
-    // }
-    // freeDirTreeNodes(destDirTree->rootNode, destINodesList);
-    // free(destINodesList);
-    // free(destDirTree);
-    // do the initial synchronization with DFS on both trees
+    INode *iNode = destINodesList->firstINode;
+    while (iNode != NULL) {
+        NameNode *nameNode = iNode->namesList->firstNameNode;
+        printf("changed node: %ju\n", iNode->id);
+        while (nameNode != NULL) {
+            printf("name node's name: %s\n", nameNode->name);
+            nameNode = nameNode->nextNode;
+        }
+        iNode = iNode->nextNode;
+    }
+    freeDirTreeNodes(destDirTree->rootNode, destINodesList);
+    free(destINodesList);
+    free(destDirTree);
 }

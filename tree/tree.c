@@ -52,7 +52,7 @@ TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type, Nam
 }
 
 void freeTreeNode(TreeNode** treeNode, INodesList* iNodesList) {
-    if (treeNode == NULL)
+    if ((*treeNode) == NULL)
         printf("here44444\n\n\n");
 
     deleteNameNodeFromNamesList((*treeNode)->iNodeP->namesList, (*treeNode)->pathName);
@@ -60,6 +60,7 @@ void freeTreeNode(TreeNode** treeNode, INodesList* iNodesList) {
     if ((*treeNode)->iNodeP->namesList->size == 0) {
         deleteINodeFromINodesList(iNodesList, (*treeNode)->iNodeP->id);
     }
+    printf("after\n");
     // treeNode->iNodeP->namesNum--;
     //treeNode->iNodeP->names       // delete from names array|||| maybe make the array a list
     //                              // maybe delete the name and -- the namesNum in the destINode too (if it is != null of course) !!!!!!!!!!!!!
