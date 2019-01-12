@@ -10,9 +10,10 @@ NamesList* initNamesList() {
 
 NameNode* initNameNode(char* name) {
     NameNode* nameNode = (NameNode*)malloc(sizeof(NameNode));
-    nameNode->name = malloc(PATH_MAX);
+    nameNode->name = (char*)malloc(PATH_MAX);
     strcpy(nameNode->name, name);
 
+    printf("\n\n\n\n                                    JUST INITIALIZED A NAME NODE WITH NAME: %s\n\n\n\n\n", nameNode->name);
     return nameNode;
 }
 
@@ -30,6 +31,8 @@ INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*
     iNode->lastModTime = lastModTime;
     iNode->size = size;
     iNode->namesList = initNamesList();
+    iNode->prevNode = NULL;
+    iNode->nextNode = NULL;
 
     if (firstName != NULL) {
         addNameNodeToNamesList(iNode->namesList, firstName);
@@ -55,17 +58,28 @@ INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*
     return iNode;
 }
 
-void freeNameNode(NameNode* nameNode) {
-    free(nameNode->name);
-    nameNode->name = NULL;
-    free(nameNode);
-    nameNode = NULL;
+void freeNameNode(NameNode** nameNode) {
+    // if (strcmp((*nameNode)->name, "/home/antonis/Documents/Dynamic-Backup/destination/dummyfolder") == 0)
+    //     return;
+    printf("name node freed1!\n");
+    if ((*nameNode) == NULL)
+        return;
+
+    printf("name node name: %s\n", (*nameNode)->name);
+
+    free((*nameNode)->name);
+    (*nameNode)->name = NULL;
+    free(*nameNode);
+    (*nameNode) = NULL;
     printf("name node freed!\n");
     return;
 }
 
-void freeNamesList(NamesList* namesList) {
-    NameNode* curNameNode = namesList->firstNameNode;
+void freeNamesList(NamesList** namesList) {
+    if (namesList == NULL)
+        return;
+
+    NameNode* curNameNode = (*namesList)->firstNameNode;
 
     while (curNameNode != NULL) {
         free(curNameNode->name);
@@ -74,22 +88,24 @@ void freeNamesList(NamesList* namesList) {
         free(curNameNode->prevNode);
         curNameNode->prevNode = NULL;
     }
-    free(namesList);
-    namesList = NULL;
-    printf("names list freed!\n");
+    free(*namesList);
+    (*namesList) = NULL;
+    // printf("names list freed!\n");
 }
 
-void freeINode(INode* iNode) {
-    freeNamesList(iNode->namesList);
-    iNode->namesList = NULL;
-    free(iNode);
-    iNode = NULL;
+void freeINode(INode** iNode) {
+    freeNamesList(&(*iNode)->namesList);
+    (*iNode)->namesList = NULL;
+    free(*iNode);
+    (*iNode) = NULL;
     printf("i-node freed!\n");
 }
 
 INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
+    printf("in find i-node\n");
     INode* curINode = iNodesList->firstINode;
     while (curINode != NULL) {
+        printf("id: %ju\n\n\n\n", curINode->id);
         if (curINode->id == id) {
             return curINode;
         } else if (id < curINode->id)
@@ -97,7 +113,7 @@ INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
 
         curINode = curINode->nextNode;
     }
-
+    printf("node not found\n");
     return NULL;
 }
 
@@ -108,8 +124,9 @@ NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
         printf("in while in find name: %s\n", curNameNode->name);
         if (strcmp(curNameNode->name, name) == 0) {
             return curNameNode;
-        } else if (strcmp(name, curNameNode->name) < 0)
+        } else if (strcmp(name, curNameNode->name) < 0) {
             return NULL;
+        }
 
         curNameNode = curNameNode->nextNode;
     }
@@ -118,13 +135,18 @@ NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
 }
 
 INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size, NamesList* namesList, char* firstName) {
+    printf("in addINodeToINodesList\n");
     if (iNodesList->size == 0) {
+        printf("in addINodeToINodesList: inodeslist's size= 0\n");
+
         iNodesList->firstINode = initINode(id, lastModTime, size, namesList, firstName);
 
         iNodesList->size++;
         printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
         return iNodesList->firstINode;
     } else {
+        printf("in addINodeToINodesList: inodeslist's size != 0\n");
+
         INode* curINode = iNodesList->firstINode;
 
         if (id < curINode->id) {
@@ -137,40 +159,54 @@ INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime
             iNodesList->size++;
             printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
             return iNodesList->firstINode;
-        } else {
-            while (curINode != NULL) {
-                if (curINode->nextNode != NULL) {
-                    if (id < curINode->id) {
-                        INode* iNodeToInsert = initINode(id, lastModTime, size, namesList, firstName);
-                        iNodeToInsert->prevNode = curINode;
-                        iNodeToInsert->nextNode = curINode->nextNode;
+        }
+        //  else {
+        while (curINode != NULL) {
+            if (curINode->nextNode != NULL) {
+                if (id < curINode->nextNode->id) {
+                    printf("in addINodeToINodesList: id < curINode->id\n");
 
-                        curINode->nextNode->prevNode = iNodeToInsert;
-                        curINode->nextNode = iNodeToInsert;
-                        iNodesList->size++;
-                        printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
+                    INode* iNodeToInsert = initINode(id, lastModTime, size, namesList, firstName);
+                    printf("in addINodeToINodesList: after initINode\n");
 
-                        return curINode->nextNode;
-                    }
-                } else {
-                    curINode->nextNode = initINode(id, lastModTime, size, namesList, firstName);
-                    curINode->nextNode->prevNode = curINode;
+                    iNodeToInsert->prevNode = curINode;
+                    iNodeToInsert->nextNode = curINode->nextNode;
+                    printf("in addINodeToINodesList: after initINode1\n");
+                    if (curINode->nextNode != NULL) printf("heeeeeeeeeeeeeeeeeeeelloo\n");
 
-                    // iNodesList->lastINode = iNodesList->lastINode->nextNode;
+                    curINode->nextNode->prevNode = iNodeToInsert;
+                    printf("in addINodeToINodesList: after initINode2\n");
+
+                    curINode->nextNode = iNodeToInsert;
                     iNodesList->size++;
+
                     printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
+                    printf("in addINodeToINodesList: after initINode3\n");
+
                     return curINode->nextNode;
                 }
+            } else {
+                printf("in addINodeToINodesList: id >= curINode->id\n");
 
-                curINode = curINode->nextNode;
+                curINode->nextNode = initINode(id, lastModTime, size, namesList, firstName);
+                curINode->nextNode->prevNode = curINode;
+
+                // iNodesList->lastINode = iNodesList->lastINode->nextNode;
+                iNodesList->size++;
+                printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
+                return curINode->nextNode;
             }
+
+            curINode = curINode->nextNode;
         }
+        // }
     }
 
     return NULL;  // not normal behavior
 }
 
 NameNode* addNameNodeToNamesList(NamesList* namesList, char* name) {
+    printf("\n\n\nADDING NAME NODE WITH NAME %s TO NAMES LIST\n\n\n\n", name);
     if (namesList->size == 0) {
         namesList->firstNameNode = initNameNode(name);
 
@@ -190,33 +226,34 @@ NameNode* addNameNodeToNamesList(NamesList* namesList, char* name) {
             namesList->size++;
             printf("Inserted |%s|\n\n", name);
             return namesList->firstNameNode;
-        } else {
-            while (curNameNode != NULL) {
-                if (curNameNode->nextNode != NULL) {
-                    if (strcmp(name, curNameNode->nextNode->name) < 0) {
-                        NameNode* nameNodeToInsert = initNameNode(name);
-                        nameNodeToInsert->prevNode = curNameNode;
-                        nameNodeToInsert->nextNode = curNameNode->nextNode;
+        }
+        // else {
+        while (curNameNode != NULL) {
+            if (curNameNode->nextNode != NULL) {
+                if (strcmp(name, curNameNode->nextNode->name) < 0) {
+                    NameNode* nameNodeToInsert = initNameNode(name);
+                    nameNodeToInsert->prevNode = curNameNode;
+                    nameNodeToInsert->nextNode = curNameNode->nextNode;
 
-                        curNameNode->nextNode->prevNode = nameNodeToInsert;
-                        curNameNode->nextNode = nameNodeToInsert;
-                        namesList->size++;
-                        printf("Inserted |%s|\n\n", name);
-                        return curNameNode->nextNode;
-                    }
-                } else {
-                    curNameNode->nextNode = initNameNode(name);
-                    curNameNode->nextNode->prevNode = curNameNode;
-
-                    // namesList->lastNameNode = namesList->lastNameNode->nextNode;
+                    curNameNode->nextNode->prevNode = nameNodeToInsert;
+                    curNameNode->nextNode = nameNodeToInsert;
                     namesList->size++;
                     printf("Inserted |%s|\n\n", name);
                     return curNameNode->nextNode;
                 }
+            } else {
+                curNameNode->nextNode = initNameNode(name);
+                curNameNode->nextNode->prevNode = curNameNode;
 
-                curNameNode = curNameNode->nextNode;
+                // namesList->lastNameNode = namesList->lastNameNode->nextNode;
+                namesList->size++;
+                printf("Inserted |%s|\n\n", name);
+                return curNameNode->nextNode;
             }
+
+            curNameNode = curNameNode->nextNode;
         }
+        // }
     }
 
     return NULL;  // not normal behavior
@@ -226,7 +263,7 @@ int deleteINodeFromINodesList(INodesList* iNodesList, ino_t id) {
     INode* iNodeToDelete = findINodeInINodesList(iNodesList, id);
 
     if (iNodeToDelete == NULL) {
-        printf("I-node with id %ju not found in names' list\n", (uintmax_t)id);
+        printf("I-node with id %ju not found in i-nodes' list\n", (uintmax_t)id);
         return -1;
     }
 
@@ -240,13 +277,14 @@ int deleteINodeFromINodesList(INodesList* iNodesList, ino_t id) {
     if (iNodeToDelete->nextNode != NULL)
         iNodeToDelete->nextNode->prevNode = iNodeToDelete->prevNode;
 
-    freeINode(iNodeToDelete);
+    freeINode(&iNodeToDelete);
     iNodesList->size--;
 
     return 0;
 }
 
 int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
+
     NameNode* nameNodeToDelete = findNameNodeInNamesList(namesList, name);
 
     if (nameNodeToDelete == NULL) {
@@ -264,7 +302,7 @@ int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
     if (nameNodeToDelete->nextNode != NULL)
         nameNodeToDelete->nextNode->prevNode = nameNodeToDelete->prevNode;
 
-    freeNameNode(nameNodeToDelete);
+    freeNameNode(&nameNodeToDelete);
     namesList->size--;
 
     return 0;
@@ -272,17 +310,66 @@ int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
 
 void deleteFileOrDirectory(char* path) {
     if (fork() == 0) {
+        printf("\n\nDeleting file with name: %s\n\n\n", path);
         char* args[] = {"rm", "-rf", path, NULL};
         if (execvp(args[0], args) == -1) {
             perror("execvp failed");
             exit(1);
         }
     }
+    wait(NULL);
 }
 
 void copyFileOrDirectory(char* sourcePath, char* destPath) {
     if (fork() == 0) {
+        printf("\n\nCopying file with name: %s\n\n\n", sourcePath);
         char* args[] = {"cp", sourcePath, destPath, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    }
+    wait(NULL);
+}
+
+void copyDirAttributes(char* sourcePath, char* destPath) {
+    // rsync -ptgo -A -X -d --no-recursive --exclude=* first-dir/ second-dir
+
+    if (fork() == 0) {
+        char sourcePathComplete[PATH_MAX];
+        strcpy(sourcePathComplete, sourcePath);
+        strcat(sourcePathComplete, "/");
+
+        char destPathComplete[PATH_MAX];
+        strcpy(destPathComplete, destPath);
+        strcat(destPathComplete, "/");
+
+        char* args[] = {"rsync", "-ptgo", "-A", "-X", "-d", "--no-recursive", "--exclude=*", sourcePathComplete, destPathComplete, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    }
+    wait(NULL);
+}
+
+void createDirAndCopyAttributes(char* sourcePath, char* destPath) {
+    if (fork() == 0) {
+        printf("\n\nCreating directoryyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n\n\n");
+        char* args[] = {"mkdir", destPath, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    }
+    wait(NULL);
+
+    copyDirAttributes(sourcePath, destPath);
+}
+
+void renameFileOrDirectory(char* oldPathName, char* newPathName) {
+    if (fork() == 0) {
+        char* args[] = {"mv", oldPathName, newPathName, NULL};
         if (execvp(args[0], args) == -1) {
             perror("execvp failed");
             exit(1);

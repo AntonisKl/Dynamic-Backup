@@ -21,4 +21,4 @@ stack.o:  stack/stack.c
 
 
 clean: 
-	$(RM) mirr *.o executables/*
+	$(RM) mirr *.o executables/* destination/*
