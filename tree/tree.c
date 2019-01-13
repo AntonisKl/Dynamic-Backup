@@ -125,28 +125,30 @@ TreeNode* addTreeNodeToDir(DirTree* tree, TreeNode* parentDir, char* name, char*
                 if (existingTreeNode->type == Directory) {
                     // special treatment for already existing directories
 
-                    char newPath[PATH_MAX];
-                    strcpy(newPath, parentDir->pathName);
-                    strcat(newPath, sourceTreeNode->name);
+                    // char newPath[PATH_MAX];
+                    // strcpy(newPath, parentDir->pathName);
+                    // strcat(newPath, sourceTreeNode->name);
 
-                    renameFileOrDirectory(existingTreeNode->pathName, newPath);
+                    // renameFileOrDirectory(existingTreeNode->pathName, newPath);
                     copyDirAttributes(sourceTreeNode->pathName, existingTreeNode->pathName);
                     struct stat curStat;
-                    stat(newPath, &curStat);
+                    stat(pathName, &curStat);
 
                     existingTreeNode->iNodeP->lastModTime = curStat.st_mtime;
                     existingTreeNode->iNodeP->size = curStat.st_size;
-                    deleteNameNodeFromNamesList(existingTreeNode->iNodeP->namesList, existingTreeNode->pathName);
-                    addNameNodeToNamesList(existingTreeNode->iNodeP->namesList, newPath);
+                    // deleteNameNodeFromNamesList(existingTreeNode->iNodeP->namesList, existingTreeNode->pathName);
+                    // addNameNodeToNamesList(existingTreeNode->iNodeP->namesList, newPath);
+
+                    sourceTreeNode->iNodeP->destINodeP = existingTreeNode->iNodeP;
+                    linkFileOrDirectory(sourceTreeNode->pathName, pathName);
 
                     // free(existingTreeNode->name);
                     // existingTreeNode->name = NULL;
                     // free(existingTreeNode->pathName);
                     // existingTreeNode->pathName = NULL;
 
-                    // existingTreeNode->name = malloc()
-                    strcpy(existingTreeNode->name, sourceTreeNode->name);
-                    strcpy(existingTreeNode->pathName, newPath);
+                    // strcpy(existingTreeNode->name, sourceTreeNode->name);
+                    // strcpy(existingTreeNode->pathName, newPath);
 
                     return existingTreeNode;
                 }
@@ -471,10 +473,10 @@ void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode* p
                 parentDir = dirTree->rootNode;
             }
 
-            addTreeNodeToDir(dirTree, parentDir, entry->d_name, path, iNodesList, curStat.st_ino, curStat.st_mtime, curStat.st_size, Directory, NULL);
+            TreeNode* addedDir = addTreeNodeToDir(dirTree, parentDir, entry->d_name, path, iNodesList, curStat.st_ino, curStat.st_mtime, curStat.st_size, Directory, NULL);
 
             printf("Handled directory: %*s[%s]\n", indent, "", entry->d_name);
-            populateTree(path, indent + 2, dirTree, parentDir, iNodesList);
+            populateTree(path, indent + 2, dirTree, addedDir, iNodesList);
         } else {  // if it is a file
             // printf("hello-1\n");
 
@@ -507,10 +509,12 @@ void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode* p
 //     return NULL;
 // }
 
-void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sourceINodesList, INodesList* destINodesList, TreeNode* curSourceDir, TreeNode* curDestDir) {
+void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sourceINodesList, INodesList* destINodesList, TreeNode* curSourceDir,
+                  TreeNode* curDestDir, WatchDescAndTreeNode sourceWdAndTreeNodes[], int index, int iNotifyFd) {
     TreeNode *curSourceTreeNode, *curDestTreeNode;
     curSourceTreeNode = curSourceDir->firstChildNode;
     curDestTreeNode = curDestDir->firstChildNode;
+    printf("============================================== cur dest dir name: %s\n", curDestDir->pathName);
     // TreeNode *curSourceParentDir = NULL, *curDestParentDir = NULL;
     struct stat curStat;
     if (curSourceTreeNode == NULL)
@@ -519,8 +523,9 @@ void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sour
     if (curDestTreeNode == NULL)
         printf("curDestTreeNode == NULL\n");
 
-    char treeNodeHandled = 0;
+    char treeNodeHandled;
     while (curSourceTreeNode != NULL || curDestTreeNode != NULL) {
+        treeNodeHandled = 0;
         printf("-----------------> current source tree node: %s, current destination tree node: %s\n",
                curSourceTreeNode == NULL ? "NULL" : curSourceTreeNode->pathName, curDestTreeNode == NULL ? "NULL" : curDestTreeNode->pathName);
         if (curDestTreeNode != NULL) {
@@ -543,8 +548,9 @@ void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sour
                 strcat(newPath, "/");
                 strcat(newPath, foundSourceTreeNode->name);
                 printf("in else of dfs\n");
-                TreeNode* addedTreeNode = addTreeNodeToDir(destDirTree, curDestDir, foundSourceTreeNode->name, newPath, destINodesList,
-                                                           curStat.st_ino, curStat.st_mtime, curStat.st_size, foundSourceTreeNode->type, foundSourceTreeNode);
+                // TreeNode* addedTreeNode
+                curDestTreeNode = addTreeNodeToDir(destDirTree, curDestDir, foundSourceTreeNode->name, newPath, destINodesList,
+                                                   curStat.st_ino, curStat.st_mtime, curStat.st_size, foundSourceTreeNode->type, foundSourceTreeNode);
 
                 treeNodeHandled = 1;
                 // if (addedTreeNode != NULL) {
@@ -555,13 +561,30 @@ void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sour
         //  else {
         if (treeNodeHandled == 0) {
             stat(curSourceTreeNode->pathName, &curStat);
-            char newPath[PATH_MAX];
-            strcpy(newPath, curDestDir->pathName);  // check for curDestDir == NULL ??????????????????????????????????????????????????????????????????????
-            strcat(newPath, "/");
-            strcat(newPath, curSourceTreeNode->name);
 
-            curDestTreeNode = addTreeNodeToDir(destDirTree, curDestDir, curSourceTreeNode->name, newPath, destINodesList,
-                                               curStat.st_ino, curStat.st_mtime, curStat.st_size, curSourceTreeNode->type, curSourceTreeNode);
+            int linkedTreeNodes = 0;
+            TreeNode* tempDestTreeNode = curDestTreeNode;
+            while (tempDestTreeNode != NULL) {
+                if (tempDestTreeNode->iNodeP->id == curStat.st_ino) {
+                    curSourceTreeNode->iNodeP->destINodeP = tempDestTreeNode->iNodeP;
+                    linkFileOrDirectory(curSourceTreeNode->pathName, tempDestTreeNode->pathName);
+
+                    linkedTreeNodes = 1;
+                    break;
+                }
+                tempDestTreeNode = tempDestTreeNode->nextNode;
+            }
+
+            if (linkedTreeNodes == 0) {
+                char newPath[PATH_MAX];
+                strcpy(newPath, curDestDir->pathName);  // check for curDestDir == NULL ??????????????????????????????????????????????????????????????????????
+                strcat(newPath, "/");
+                strcat(newPath, curSourceTreeNode->name);
+                printf("\n\n\ncur dest dir name: %s\n\n\n\n", curDestDir->pathName);
+
+                curDestTreeNode = addTreeNodeToDir(destDirTree, curDestDir, curSourceTreeNode->name, newPath, destINodesList,
+                                                   curStat.st_ino, curStat.st_mtime, curStat.st_size, curSourceTreeNode->type, curSourceTreeNode);
+            }
             // }
         }
         // if (curSourceTreeNode == NULL) {
@@ -575,9 +598,17 @@ void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sour
         // if (curSourceTreeNode != NULL) {
         //     addTreeNodeToDir(destDirTree, curDestParentDir, );
         // }
+
         if (curSourceTreeNode != NULL && curDestTreeNode != NULL) {
             if (curSourceTreeNode->type == Directory && curDestTreeNode->type == Directory) {
-                dfsFor2Trees(sourceDirTree, destDirTree, sourceINodesList, destINodesList, curSourceTreeNode, curDestTreeNode);
+                sourceWdAndTreeNodes[index].wd = inotify_add_watch(iNotifyFd, curSourceTreeNode->pathName, IN_ALL_EVENTS);
+                sourceWdAndTreeNodes[index].sourceTreeNodeP = curSourceTreeNode;
+                sourceWdAndTreeNodes[index].destTreeNodeP = curDestTreeNode;
+
+                printf("1111111111111111111111111111111111111111111111111111111111111111111 will call dfs for dest tree node with name: %s and source: %s\n",
+                 curDestTreeNode->pathName, curSourceTreeNode->pathName);
+                dfsFor2Trees(sourceDirTree, destDirTree, sourceINodesList, destINodesList, curSourceTreeNode, curDestTreeNode,
+                             sourceWdAndTreeNodes, ++index, iNotifyFd);
             }
             //  else if (curSourceTreeNode->type == File && curDestTreeNode->type == File)
             // {

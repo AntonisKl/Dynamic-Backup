@@ -19,8 +19,18 @@ int main(int argc, char **argv) {
     populateTree(sourceDirName, 0, sourceDirTree, NULL, sourceINodesList);
     populateTree(destDirName, 0, destDirTree, NULL, destINodesList);
 
-    dfsFor2Trees(sourceDirTree, destDirTree, sourceINodesList, destINodesList, sourceDirTree->rootNode, destDirTree->rootNode);
+    // printf("\n\n\nsize of source tree: %u", sourceDirTree->size);
+    WatchDescAndTreeNode sourceWdAndTreeNodes[sourceDirTree->size];
+    int iNotifyFd = inotify_init();
 
+    printf("Initial synchronization started. Please do not modify neither the source nor the destination directory during this process.\n");
+    dfsFor2Trees(sourceDirTree, destDirTree, sourceINodesList, destINodesList, sourceDirTree->rootNode, destDirTree->rootNode, sourceWdAndTreeNodes, 0, iNotifyFd);
+    printf("Initial synchronization finished. You can now start modifying the source directory.\n");
+
+    // for (int i = 0; i < sourceDirTree->size; i++)
+    // {
+    //     printf("\n\nwd: %d\n\n", sourceWdAndTreeNodes[i].wd);
+    // }
     // free memory
     INode *iNode1 = sourceINodesList->firstINode;
     while (iNode1 != NULL) {

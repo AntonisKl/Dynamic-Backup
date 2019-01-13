@@ -397,6 +397,18 @@ void renameFileOrDirectory(char* oldPathName, char* newPathName) {
             exit(1);
         }
     }
+    wait(NULL);
+}
+
+void linkFileOrDirectory(char* sourcePath, char* destPath) {
+    if (fork() == 0) {
+        char* args[] = {"ln", sourcePath, destPath, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    }
+    wait(NULL);
 }
 
 void handleFlags(int argc, char** argv, char** sourceDirName, char** destDirName) {

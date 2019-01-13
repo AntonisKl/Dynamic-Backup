@@ -17,6 +17,11 @@ typedef struct DirTree {
     TreeNode* rootNode;
 } DirTree;
 
+typedef struct WatchDescAndTreeNode {
+    int wd;
+    TreeNode* sourceTreeNodeP, *destTreeNodeP;
+} WatchDescAndTreeNode;
+
 DirTree* initDirTree(char* rootName, char* pathName, INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size);
 
 TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type, NamesList* namesList);
@@ -33,6 +38,7 @@ void freeDirTreeNodes(TreeNode* treeNode, INodesList* iNodesList);
 
 void populateTree(const char* dirName, int indent, DirTree* dirTree, TreeNode* parentDir, INodesList* iNodesList);
 
-void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sourceINodesList, INodesList* destINodesList, TreeNode* curSourceDir, TreeNode* curDestDir);
+void dfsFor2Trees(DirTree* sourceDirTree, DirTree* destDirTree, INodesList* sourceINodesList, INodesList* destINodesList, TreeNode* curSourceDir,
+                  TreeNode* curDestDir, WatchDescAndTreeNode sourceWdAndTreeNodes[], int index, int iNotifyFd);
 
 #endif
