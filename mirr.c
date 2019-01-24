@@ -1,62 +1,61 @@
 #include "tree/tree.h"
 
+static WdAndTreeNodesList *wdAndTreeNodesList;
+static DirTree *sourceDirTree, *destDirTree;
+static INodesList *sourceINodesList, *destINodesList;
+
+void intHandler(int dummy) {
+    freeWdAndTreeNodesList(&wdAndTreeNodesList);
+    freeDirTreeAndINodesList(sourceDirTree, sourceINodesList);
+    freeDirTreeAndINodesList(destDirTree, destINodesList);
+    printf("\nfreed memory\n\n");
+    exit(0);
+}
+
 int main(int argc, char **argv) {
+    signal(SIGINT, intHandler);
+
     char *sourceDirName, *destDirName;
 
     handleFlags(argc, argv, &sourceDirName, &destDirName);
 
-    INodesList *sourceINodesList = initINodesList(), *destINodesList = initINodesList();
+    sourceINodesList = initINodesList();
+    destINodesList = initINodesList();
 
     struct stat sourceStat, destStat;
     stat(sourceDirName, &sourceStat);
     stat(destDirName, &destStat);
     printf("source dir name: %s\n", sourceDirName);
-    DirTree *sourceDirTree = initDirTree(sourceDirName, sourceDirName, sourceINodesList, sourceStat.st_ino, sourceStat.st_mtime, sourceStat.st_size),
-            *destDirTree = initDirTree(destDirName, destDirName, destINodesList, destStat.st_ino, destStat.st_mtime, destStat.st_size);
-
-    // printf("\n\nhaha name: %s\n", sourceDirTree->rootNode->name);
+    sourceDirTree = initDirTree(basename(sourceDirName), sourceDirName, sourceINodesList, sourceStat.st_ino, sourceStat.st_mtime, sourceStat.st_size);
+    destDirTree = initDirTree(basename(destDirName), destDirName, destINodesList, destStat.st_ino, destStat.st_mtime, destStat.st_size);
 
     populateTree(sourceDirName, 0, sourceDirTree, NULL, sourceINodesList);
     populateTree(destDirName, 0, destDirTree, NULL, destINodesList);
 
-    // printf("\n\n\nsize of source tree: %u", sourceDirTree->size);
-    WatchDescAndTreeNode sourceWdAndTreeNodes[sourceDirTree->size];
+    wdAndTreeNodesList = initWdAndTreeNodesList();
     int iNotifyFd = inotify_init();
 
     printf("Initial synchronization started. Please do not modify neither the source nor the destination directory during this process.\n");
-    dfsFor2Trees(sourceDirTree, destDirTree, sourceINodesList, destINodesList, sourceDirTree->rootNode, destDirTree->rootNode, sourceWdAndTreeNodes, 0, iNotifyFd);
+    dfsFor2Trees(sourceDirTree, destDirTree, sourceINodesList, destINodesList, sourceDirTree->rootNode, destDirTree->rootNode, wdAndTreeNodesList, iNotifyFd);
+
+    addWatches(sourceDirTree->rootNode, destDirTree->rootNode, wdAndTreeNodesList, iNotifyFd);
     printf("Initial synchronization finished. You can now start modifying the source directory.\n");
 
-    // for (int i = 0; i < sourceDirTree->size; i++)
-    // {
-    //     printf("\n\nwd: %d\n\n", sourceWdAndTreeNodes[i].wd);
-    // }
-    // free memory
-    INode *iNode1 = sourceINodesList->firstINode;
-    while (iNode1 != NULL) {
-        NameNode *nameNode = iNode1->namesList->firstNameNode;
-        printf("changed node: %ju\n", iNode1->id);
-        while (nameNode != NULL) {
-            printf("name node's name: %s\n", nameNode->name);
-            nameNode = nameNode->nextNode;
-        }
-        iNode1 = iNode1->nextNode;
-    }
-    freeDirTreeNodes(sourceDirTree->rootNode, sourceINodesList);
-    free(sourceINodesList);
-    free(sourceDirTree);
+    // WatchDescAndTreeNode *curWdAndTreeNode = wdAndTreeNodesList->firstNode;
+    // while (curWdAndTreeNode != NULL) {
+    //     printf("wdAndTreeNode-> wd: %d, sourceName: %s, destName: %s\n", curWdAndTreeNode->wd, curWdAndTreeNode->sourceTreeNodeP->pathName, curWdAndTreeNode->destTreeNodeP->pathName);
 
-    INode *iNode = destINodesList->firstINode;
-    while (iNode != NULL) {
-        NameNode *nameNode = iNode->namesList->firstNameNode;
-        printf("changed node: %ju\n", iNode->id);
-        while (nameNode != NULL) {
-            printf("name node's name: %s\n", nameNode->name);
-            nameNode = nameNode->nextNode;
-        }
-        iNode = iNode->nextNode;
-    }
-    freeDirTreeNodes(destDirTree->rootNode, destINodesList);
-    free(destINodesList);
-    free(destDirTree);
+    //     curWdAndTreeNode = curWdAndTreeNode->nextNode;
+    // }
+
+
+
+
+    startWatchingDirectory(iNotifyFd, wdAndTreeNodesList, sourceDirTree, sourceINodesList, destDirTree, destINodesList);
+
+    // printf("hello\n");
+
+    freeWdAndTreeNodesList(&wdAndTreeNodesList);
+    freeDirTreeAndINodesList(sourceDirTree, sourceINodesList);
+    freeDirTreeAndINodesList(destDirTree, destINodesList);
 }

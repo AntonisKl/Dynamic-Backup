@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/inotify.h>
+#include <signal.h>
+#include <libgen.h>
 
 typedef enum Type {
     Directory,
@@ -81,7 +83,7 @@ void createDirAndCopyAttributes(char* sourcePath, char* destPath);
 
 void renameFileOrDirectory(char* oldPathName, char* newPathName);
 
-void linkFileOrDirectory(char* sourcePath, char* destPath);
+void linkFile(char* sourcePath, char* destPath);
 
 void handleFlags(int argc, char** argv, char** sourceDirName, char** destDirName);
 

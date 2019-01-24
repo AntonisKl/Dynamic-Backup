@@ -80,8 +80,8 @@ void freeNameNode(NameNode** nameNode) {
 
 void freeNamesList(NamesList** namesList) {
     // printf("inside\n");
-    if ((*namesList) == NULL)
-        return;
+    // if ((*namesList) == NULL)
+    //     return;
     // printf("inside1\n");
 
     NameNode* curNameNode = (*namesList)->firstNameNode;
@@ -109,7 +109,9 @@ void freeNamesList(NamesList** namesList) {
 
 void freeINode(INode** iNode) {
     printf("in free1\n");
-    freeNamesList(&(*iNode)->namesList);
+    if ((*iNode)->namesList != NULL) {
+        freeNamesList(&(*iNode)->namesList);
+    }
     printf("in free2\n");
 
     (*iNode)->namesList = NULL;
@@ -122,7 +124,7 @@ INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
     printf("in find i-node\n");
     INode* curINode = iNodesList->firstINode;
     while (curINode != NULL) {
-        printf("id: %ju\n\n\n\n", curINode->id);
+        // printf("id: %ju\n\n\n\n", curINode->id);
         if (curINode->id == id) {
             return curINode;
         } else if (id < curINode->id) {
@@ -136,7 +138,12 @@ INode* findINodeInINodesList(INodesList* iNodesList, ino_t id) {
 }
 
 NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
+    if (namesList == NULL)
+        return NULL;
+    printf("pass\n");
+
     NameNode* curNameNode = namesList->firstNameNode;
+    printf("pass1\n");
 
     while (curNameNode != NULL) {
         printf("in while in find name: %s\n", curNameNode->name);
@@ -145,10 +152,8 @@ NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
         } else if (strcmp(name, curNameNode->name) < 0) {
             return NULL;
         }
-
         curNameNode = curNameNode->nextNode;
     }
-
     return NULL;
 }
 
@@ -307,6 +312,8 @@ int deleteINodeFromINodesList(INodesList* iNodesList, ino_t id) {
 }
 
 int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
+    if (namesList == NULL)
+        return -1;
     NameNode* nameNodeToDelete = findNameNodeInNamesList(namesList, name);
 
     if (nameNodeToDelete == NULL) {
@@ -317,12 +324,12 @@ int deleteNameNodeFromNamesList(NamesList* namesList, char* name) {
     if (strcmp(nameNodeToDelete->name, namesList->firstNameNode->name) == 0) {
         namesList->firstNameNode = nameNodeToDelete->nextNode;
     }
-
-    if (nameNodeToDelete->prevNode != NULL)
+    if (nameNodeToDelete->prevNode != NULL) {
         nameNodeToDelete->prevNode->nextNode = nameNodeToDelete->nextNode;
-
-    if (nameNodeToDelete->nextNode != NULL)
+    }
+    if (nameNodeToDelete->nextNode != NULL) {
         nameNodeToDelete->nextNode->prevNode = nameNodeToDelete->prevNode;
+    }
 
     freeNameNode(&nameNodeToDelete);
     namesList->size--;
@@ -356,8 +363,8 @@ void copyFileOrDirectory(char* sourcePath, char* destPath) {
 
 void copyDirAttributes(char* sourcePath, char* destPath) {
     // rsync -ptgo -A -X -d --no-recursive --exclude=* first-dir/ second-dir
-
-    if (fork() == 0) {
+    int pid = fork();
+    if (pid == 0) {
         char sourcePathComplete[PATH_MAX];
         strcpy(sourcePathComplete, sourcePath);
         strcat(sourcePathComplete, "/");
@@ -371,44 +378,84 @@ void copyDirAttributes(char* sourcePath, char* destPath) {
             perror("execvp failed");
             exit(1);
         }
+    } else if (pid == -1) {
+        perror("fork error");
+        exit(1);
+    } else {
+        wait(NULL);
     }
-    wait(NULL);
+}
+
+void copyFileModTime(char* sourcePath, char* destPath) {
+    // rsync -ptgo -A -X -d --no-recursive --exclude=* first-dir/ second-dir
+    int pid = fork();
+    if (pid == 0) {
+        char reference[PATH_MAX + 12];
+        strcpy(reference, "--reference=");
+        strcat(reference, sourcePath);
+
+        char* args[] = {"touch", "-m", reference, destPath, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    } else if (pid == -1) {
+        perror("fork error");
+        exit(1);
+    } else {
+        wait(NULL);
+    }
 }
 
 void createDirAndCopyAttributes(char* sourcePath, char* destPath) {
-    if (fork() == 0) {
+    int pid = fork();
+    if (pid == 0) {
         printf("\n\nCreating directoryyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n\n\n");
         char* args[] = {"mkdir", destPath, NULL};
         if (execvp(args[0], args) == -1) {
             perror("execvp failed");
             exit(1);
         }
+    } else if (pid == -1) {
+        perror("fork error");
+        exit(1);
+    } else {
+        wait(NULL);
     }
-    wait(NULL);
 
     copyDirAttributes(sourcePath, destPath);
 }
 
 void renameFileOrDirectory(char* oldPathName, char* newPathName) {
-    if (fork() == 0) {
+    int pid = fork();
+    if (pid == 0) {
         char* args[] = {"mv", oldPathName, newPathName, NULL};
         if (execvp(args[0], args) == -1) {
             perror("execvp failed");
             exit(1);
         }
+    } else if (pid == -1) {
+        perror("fork error");
+        exit(1);
+    } else {
+        wait(NULL);
     }
-    wait(NULL);
 }
 
-void linkFileOrDirectory(char* sourcePath, char* destPath) {
-    if (fork() == 0) {
+void linkFile(char* sourcePath, char* destPath) {
+    int pid = fork();
+    if (pid == 0) {
         char* args[] = {"ln", sourcePath, destPath, NULL};
         if (execvp(args[0], args) == -1) {
             perror("execvp failed");
             exit(1);
         }
+    } else if (pid == -1) {
+        perror("fork error");
+        exit(1);
+    } else {
+        wait(NULL);
     }
-    wait(NULL);
 }
 
 void handleFlags(int argc, char** argv, char** sourceDirName, char** destDirName) {
