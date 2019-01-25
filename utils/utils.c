@@ -40,6 +40,7 @@ INode* initINode(ino_t id, time_t lastModTime, off_t size, char* firstName) {
         // add the first name of the list
         addNameNodeToNamesList(iNode->namesList, firstName);
     }
+
     return iNode;
 }
 
