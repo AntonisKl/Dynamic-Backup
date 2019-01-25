@@ -4,25 +4,29 @@
 #include "../utils/utils.h"
 
 typedef struct TreeNode {
-    char *name, *pathName;  // including this directory's/file's name
-    INode* iNodeP;
-    struct TreeNode *nextNode, *prevNode, *firstChildNode;  // covers all different cases by setting null the variables that we don't need
-    Type type;
-    int contentsNum;  // will be -1 for files
+    char *name, *pathName;  // name and path name of the File/Directory
+    INode* iNodeP;          // pointer pointing to the corresponding destination's INode
+    struct TreeNode *nextNode, *prevNode, *firstChildNode;
+    Type type;        // can be File or Directory
+    int contentsNum;  // will be -1 for Files and >=0 for Diretories
 } TreeNode;
 
+// in each level of the DirTree the TreeNodes are sorted in an alphabetical order of their names (not the path names)
 typedef struct DirTree {
     unsigned int size;
     TreeNode* rootNode;
 } DirTree;
 
 typedef struct WatchDescAndTreeNode {
-    int wd;
-    TreeNode *sourceTreeNodeP, *destTreeNodeP, *sourceParentDirP, *destParentDirP;
-    // char sourcePathName[PATH_MAX], destPathName[PATH_MAX];
+    int wd;                                                                         // watch descriptor
+    TreeNode *sourceTreeNodeP, *destTreeNodeP, *sourceParentDirP, *destParentDirP;  // sourceTreeNodeP: TreeNode pointer for the source TreeNode (the one who will be watched)
+                                                                                    // destTreeNodeP: TreeNode pointer for the corresponding destination TreeNode
+                                                                                    // sourceParentDirP: TreeNode pointer for the parent of the source TreeNode
+                                                                                    // destParentDirP: TreeNode pointer for the parent of the corresponding destination TreeNode
     struct WatchDescAndTreeNode *nextNode, *prevNode;
 } WatchDescAndTreeNode;
 
+// WdAndTreeNodesList: sorted list of WatchDescAndTreeNodes in ascending order of wd
 typedef struct WdAndTreeNodesList {
     unsigned int size;
     WatchDescAndTreeNode* firstNode;

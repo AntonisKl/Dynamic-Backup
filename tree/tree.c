@@ -730,7 +730,7 @@ void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesLis
             // update destination directory
             deleteFileOrDirectory(oldDestPath);
 
-            // reset values that are related to moved event
+            // reset values that are related to "moved" event
             cookieFrom = 0;
             cookieTo = 0;
             free(prevName);
@@ -897,13 +897,14 @@ void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesLis
                 deleteTreeNodeFromDir(destDirTree, curDestGParentDir, curSourceParentDir->name, curDestParentDir->pathName, destINodesList);
                 break;
             }
-            case IN_DELETE | IN_ISDIR: {
-                printf("isdir\n");
-                break;
-            }
+            // case IN_DELETE | IN_ISDIR: {
+            //     printf("isdir\n");
+            //     break;
+            // }
             case IN_MOVED_FROM: {
                 printf("moved from\n");
 
+                // set the needed variables
                 cookieFrom = iNotifyEvent.cookie;
                 prevName = (char*)malloc(NAME_MAX);
                 strcpy(prevName, (*curName));
@@ -917,26 +918,26 @@ void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesLis
 
                 cookieTo = iNotifyEvent.cookie;
 
-                // char oldSourcePath[PATH_MAX], oldDestPath[PATH_MAX];
                 if (prevName != NULL && prevSourceParentDir != NULL && prevDestParentDir != NULL) {
-                    strcpy(oldSourcePath, prevSourceParentDir->pathName);  // check for curDestDir == NULL ??????????????????????????????????????????????????????????????????????
+                    strcpy(oldSourcePath, prevSourceParentDir->pathName);
                     strcat(oldSourcePath, "/");
                     strcat(oldSourcePath, prevName);
 
-                    strcpy(oldDestPath, prevDestParentDir->pathName);  // check for curDestDir == NULL ??????????????????????????????????????????????????????????????????????
+                    strcpy(oldDestPath, prevDestParentDir->pathName);
                     strcat(oldDestPath, "/");
                     strcat(oldDestPath, prevName);
-                    printf("old dest path: %s\n", oldDestPath);
-                    // deleteFileOrDirectory(oldDestPath);
 
+                    // delete the old TreeNodes
                     deleteTreeNodeFromDir(sourceDirTree, prevSourceParentDir, prevName, oldSourcePath, sourceINodesList);
                     deleteTreeNodeFromDir(destDirTree, prevDestParentDir, prevName, oldDestPath, destINodesList);
                 }
 
+                // add the new TreeNodes
                 handleCreateEvent(sourceDirTree, destDirTree, curSourceParentDir, curDestParentDir, (*curName), pathName, sourceINodesList,
                                   destINodesList, curStat);
 
                 if (cookieFrom != cookieTo) {
+                    // just delete the old file
                     deleteFileOrDirectory(oldDestPath);
                 } else {
                     char newDestPath[PATH_MAX];
@@ -944,10 +945,11 @@ void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesLis
                     strcat(newDestPath, "/");
                     strcat(newDestPath, (*curName));
 
+                    // move the file from the old destination path to the new destination path
                     moveFile(oldDestPath, newDestPath);
                 }
 
-                // reset values that are related to moved event
+                // reset values that are related to "moved" event
                 cookieFrom = 0;
                 cookieTo = 0;
                 if (prevName != NULL) {
@@ -961,13 +963,14 @@ void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesLis
             }
         }
 
-        printf("ha\n");
+        // free curName only if it was malloced
         if ((*curName) != NULL) {
             free((*curName));
             (*curName) = NULL;
         }
     }
 
+    // error in read
     if (readRet == -1) {
         perror("read inotify desc error");
         exit(1);

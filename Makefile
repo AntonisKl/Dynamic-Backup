@@ -16,9 +16,6 @@ tree.o:  tree/tree.c
 utils.o:  utils/utils.c
 	$(CC) $(CFLAGS) -c utils/utils.c
 
-# stack.o:  stack/stack.c
-# 	$(CC) $(CFLAGS) -c stack/stack.c
-
 
 clean: 
-	$(RM) mirr *.o executables/* destination/*
+	$(RM) mirr *.o executables/*

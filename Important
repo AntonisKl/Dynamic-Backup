@@ -1,2 +1,0 @@
-- maybe delete the corresponding i-node when deleting a tree node ONLY IF the i-node does not have any other references
-- free structs before program exits
