@@ -813,38 +813,6 @@ void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesLis
 
                 break;
             }
-            // case IN_CLOSE_WRITE: {
-            //     printf("close write\n");
-
-            //     if (nameLen <= 0) {
-            //         // printf("blaaaaaaa\n");
-            //         break;
-            //     }
-
-            //     TreeNode* modSourceTreeNode = findTreeNodeInDir(curSourceParentDir, (*curName), S_ISREG(curStat.st_mode) ? File : Directory);
-            //     if (modSourceTreeNode == NULL) {
-            //         printf("Oops...\n");
-            //         break;
-            //     }
-
-            //     if (modSourceTreeNode->iNodeP->size != curStat.st_size) {
-            //         modSourceTreeNode->iNodeP->size = curStat.st_size;
-            //     }
-
-            //     // if (modSourceTreeNode->iNodeP->lastModTime != curStat.st_mtime) {
-            //     modSourceTreeNode->iNodeP->lastModTime = curStat.st_mtime;
-            //     char newPath[PATH_MAX];
-            //     strcpy(newPath, curDestParentDir->pathName);  // check for curDestDir == NULL ??????????????????????????????????????????????????????????????????????
-            //     strcat(newPath, "/");
-            //     strcat(newPath, modSourceTreeNode->name);
-
-            //     copyFileOrDirectory(modSourceTreeNode->pathName, newPath);
-
-            //     // addTreeNodeToDir(destDirTree, curDestParentDir, modSourceTreeNode->name, newPath, destINodesList,
-            //     //                  curStat.st_ino, curStat.st_mtime, curStat.st_size, modSourceTreeNode->type,
-            //     //                  modSourceTreeNode);
-            //     break;
-            // }
             case IN_DELETE: {
                 printf("delete\n");
 
@@ -870,12 +838,18 @@ void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesLis
             case IN_DELETE_SELF: {
                 printf("delete self\n");
 
+                char sourcePath[PATH_MAX];
+                strcpy(sourcePath, curSourceParentDir->pathName);
+
+                char destPath[PATH_MAX];
+                strcpy(destPath, curDestParentDir->pathName);
+                
                 // delete current directory
-                deleteFileOrDirectory(curDestParentDir->pathName);
+                deleteFileOrDirectory(destPath);
 
                 // delete TreeNodes
-                deleteTreeNodeFromDir(sourceDirTree, curSourceGParentDir, curSourceParentDir->name, curSourceParentDir->pathName, sourceINodesList);
-                deleteTreeNodeFromDir(destDirTree, curDestGParentDir, curSourceParentDir->name, curDestParentDir->pathName, destINodesList);
+                deleteTreeNodeFromDir(sourceDirTree, curSourceGParentDir, basename(sourcePath), sourcePath, sourceINodesList);
+                deleteTreeNodeFromDir(destDirTree, curDestGParentDir, basename(sourcePath), destPath, destINodesList);
                 break;
             }
             // case IN_DELETE | IN_ISDIR: {
