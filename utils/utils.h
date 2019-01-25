@@ -53,7 +53,7 @@ NameNode* initNameNode(char* name);
 
 INodesList* initINodesList();
 
-INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*/, NamesList* namesList, char* firstName);
+INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*/, char* firstName);
 
 void freeNameNode(NameNode** nameNode);
 
@@ -65,7 +65,7 @@ INode* findINodeInINodesList(INodesList* iNodesList, ino_t id);
 
 NameNode* findNameNodeInNamesList(NamesList* namesList, char* name);
 
-INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size, NamesList* namesList, char* firstName);
+INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size, char* firstName);
 
 NameNode* addNameNodeToNamesList(NamesList* namesList, char* name);
 
@@ -84,6 +84,8 @@ void createDirAndCopyAttributes(char* sourcePath, char* destPath);
 void renameFileOrDirectory(char* oldPathName, char* newPathName);
 
 void linkFile(char* sourcePath, char* destPath);
+
+void moveFile(char* sourcePath, char* destPath);
 
 void handleFlags(int argc, char** argv, char** sourceDirName, char** destDirName);
 

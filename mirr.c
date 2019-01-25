@@ -3,11 +3,15 @@
 static WdAndTreeNodesList *wdAndTreeNodesList;
 static DirTree *sourceDirTree, *destDirTree;
 static INodesList *sourceINodesList, *destINodesList;
+static char *curName;
 
 void intHandler(int dummy) {
     freeWdAndTreeNodesList(&wdAndTreeNodesList);
     freeDirTreeAndINodesList(sourceDirTree, sourceINodesList);
     freeDirTreeAndINodesList(destDirTree, destINodesList);
+    if (curName != NULL) {
+        free(curName);
+    }
     printf("\nfreed memory\n\n");
     exit(0);
 }
@@ -48,10 +52,7 @@ int main(int argc, char **argv) {
     //     curWdAndTreeNode = curWdAndTreeNode->nextNode;
     // }
 
-
-
-
-    startWatchingDirectory(iNotifyFd, wdAndTreeNodesList, sourceDirTree, sourceINodesList, destDirTree, destINodesList);
+    startWatchingDirectory(iNotifyFd, wdAndTreeNodesList, sourceDirTree, sourceINodesList, destDirTree, destINodesList, &curName);
 
     // printf("hello\n");
 

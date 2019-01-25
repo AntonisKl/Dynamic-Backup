@@ -27,7 +27,7 @@ INodesList* initINodesList() {
     return iNodesList;
 }
 
-INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*/, NamesList* namesList, char* firstName) {
+INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*/, char* firstName) {
     INode* iNode = (INode*)malloc(sizeof(INode));
     iNode->id = id;
     iNode->lastModTime = lastModTime;
@@ -39,21 +39,22 @@ INode* initINode(ino_t id, time_t lastModTime, off_t size /*, INode* destINodeP*
 
     if (firstName != NULL) {
         addNameNodeToNamesList(iNode->namesList, firstName);
-    } else if (namesList != NULL) {
-        NameNode* curDestNameNode = iNode->namesList->firstNameNode;
-        NameNode* curSourceNameNode = namesList->firstNameNode;
+    } 
+    // else if (namesList != NULL) {
+    //     NameNode* curDestNameNode = iNode->namesList->firstNameNode;
+    //     NameNode* curSourceNameNode = namesList->firstNameNode;
 
-        if (curSourceNameNode != NULL) {
-            iNode->namesList->firstNameNode = initNameNode(curSourceNameNode->name);
-        }
+    //     if (curSourceNameNode != NULL) {
+    //         iNode->namesList->firstNameNode = initNameNode(curSourceNameNode->name);
+    //     }
 
-        while (curSourceNameNode != NULL) {
-            curDestNameNode->nextNode = initNameNode(curSourceNameNode->name);
+    //     while (curSourceNameNode != NULL) {
+    //         curDestNameNode->nextNode = initNameNode(curSourceNameNode->name);
 
-            curSourceNameNode = curSourceNameNode->nextNode;
-            curDestNameNode = curDestNameNode->nextNode;
-        }
-    }
+    //         curSourceNameNode = curSourceNameNode->nextNode;
+    //         curDestNameNode = curDestNameNode->nextNode;
+    //     }
+    // }
 
     // iNode->namesList->firstNameNode = initNameNode(firstName);
     // iNode->namesList->size++;
@@ -157,12 +158,12 @@ NameNode* findNameNodeInNamesList(NamesList* namesList, char* name) {
     return NULL;
 }
 
-INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size, NamesList* namesList, char* firstName) {
+INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size, char* firstName) {
     printf("in addINodeToINodesList\n");
     if (iNodesList->size == 0) {
         printf("in addINodeToINodesList: inodeslist's size= 0\n");
 
-        iNodesList->firstINode = initINode(id, lastModTime, size, namesList, firstName);
+        iNodesList->firstINode = initINode(id, lastModTime, size, firstName);
 
         iNodesList->size++;
         printf("Inserted i-node with id |%ju|\n\n", (uintmax_t)id);
@@ -174,7 +175,7 @@ INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime
 
         if (id < curINode->id) {
             // insert at start
-            INode* iNodeToInsert = initINode(id, lastModTime, size, namesList, firstName);
+            INode* iNodeToInsert = initINode(id, lastModTime, size, firstName);
             iNodeToInsert->nextNode = curINode;
 
             curINode->prevNode = iNodeToInsert;
@@ -189,7 +190,7 @@ INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime
                 if (id < curINode->nextNode->id) {
                     printf("in addINodeToINodesList: id < curINode->id\n");
 
-                    INode* iNodeToInsert = initINode(id, lastModTime, size, namesList, firstName);
+                    INode* iNodeToInsert = initINode(id, lastModTime, size, firstName);
                     printf("in addINodeToINodesList: after initINode\n");
 
                     iNodeToInsert->prevNode = curINode;
@@ -211,7 +212,7 @@ INode* addINodeToINodesList(INodesList* iNodesList, ino_t id, time_t lastModTime
             } else {
                 printf("in addINodeToINodesList: id >= curINode->id\n");
 
-                curINode->nextNode = initINode(id, lastModTime, size, namesList, firstName);
+                curINode->nextNode = initINode(id, lastModTime, size, firstName);
                 curINode->nextNode->prevNode = curINode;
 
                 // iNodesList->lastINode = iNodesList->lastINode->nextNode;
@@ -446,6 +447,22 @@ void linkFile(char* sourcePath, char* destPath) {
     int pid = fork();
     if (pid == 0) {
         char* args[] = {"ln", sourcePath, destPath, NULL};
+        if (execvp(args[0], args) == -1) {
+            perror("execvp failed");
+            exit(1);
+        }
+    } else if (pid == -1) {
+        perror("fork error");
+        exit(1);
+    } else {
+        wait(NULL);
+    }
+}
+
+void moveFile(char* sourcePath, char* destPath) {
+    int pid = fork();
+    if (pid == 0) {
+        char* args[] = {"mv", sourcePath, destPath, NULL};
         if (execvp(args[0], args) == -1) {
             perror("execvp failed");
             exit(1);

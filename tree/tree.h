@@ -5,7 +5,6 @@
 
 typedef struct TreeNode {
     char *name, *pathName;  // including this directory's/file's name
-    char visited;
     INode* iNodeP;
     struct TreeNode *nextNode, *prevNode, *firstChildNode;  // covers all different cases by setting null the variables that we don't need
     Type type;
@@ -33,7 +32,7 @@ typedef struct WdAndTreeNodesList {
 DirTree* initDirTree(char* rootName, char* pathName, INodesList* iNodesList, ino_t id, time_t lastModTime, off_t size);
 
 // initializes TreeNode
-TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type, NamesList* namesList);
+TreeNode* initTreeNode(char* name, char* pathName, INode* iNodeP, Type type);
 
 // frees TreeNode and its included structures
 void freeTreeNode(TreeNode** treeNode, INodesList* iNodesList);
@@ -87,8 +86,11 @@ void freeDirTreeAndINodesList(DirTree* dirTree, INodesList* iNodesList);
 // adds watches to all the source directories that are already inserted into WdAndTreeNodesList and updates the wd variable of each entry
 void addWatches(TreeNode* sourceRootDir, TreeNode* destRootDir, WdAndTreeNodesList* wdAndTreeNodesList, int iNotifyFd);
 
+void handleCreateEvent(DirTree* sourceDirTree, DirTree* destDirTree, TreeNode* curSourceParentDir, TreeNode* curDestParentDir, char* curName,
+                       char* pathName, INodesList* sourceINodesList, INodesList* destINodesList, struct stat curStat);
+
 // starts reading the inotify's file descriptor iNotifyFd
 void startWatchingDirectory(int iNotifyFd, WdAndTreeNodesList* wdAndTreeNodesList, DirTree* sourceDirTree, INodesList* sourceINodesList,
-                            DirTree* destDirTree, INodesList* destINodesList);
+                            DirTree* destDirTree, INodesList* destINodesList, char** curName);
 
 #endif
